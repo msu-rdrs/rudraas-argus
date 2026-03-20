@@ -1,0 +1,50 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>RUDRAAS ARGUS</title>
+
+  <!-- CesiumJS via CDN -->
+  <script src="https://cesium.com/downloads/cesiumjs/releases/1.119/Build/Cesium/Cesium.js"></script>
+  <link href="https://cesium.com/downloads/cesiumjs/releases/1.119/Build/Cesium/Widgets/widgets.css" rel="stylesheet" />
+
+  <!-- App Styles -->
+  <link rel="stylesheet" href="style.css" />
+</head>
+<body>
+
+  <!-- Boot Screen -->
+  <div id="boot-screen">
+    <div id="boot-content">
+      <div id="boot-title">RUDRAAS DYNAMICS</div>
+      <div id="boot-subtitle">ARGUS INTELLIGENCE PLATFORM</div>
+      <div id="boot-terminal"></div>
+    </div>
+  </div>
+
+  <!-- Cesium 3D Globe -->
+  <div id="cesiumContainer"></div>
+
+  <!-- Top Bar -->
+  <div id="top-bar">
+    <div id="app-title">RUDRAAS ARGUS</div>
+    <input id="search-bar" type="text" placeholder="SEARCH TARGET LOCATION..." autocomplete="off" />
+    <div id="utc-clock">00:00:00</div>
+  </div>
+
+  <!-- Classification Strip -->
+  <div id="classification-strip">
+    <span>SYSTEM ACTIVE &nbsp;|&nbsp; UNCLASSIFIED</span>
+  </div>
+
+  <!-- Camera Coordinates -->
+  <div id="camera-coords">
+    LAT: ---.----&deg; &nbsp; LNG: ---.----&deg; &nbsp; ALT: ------m
+  </div>
+
+  <!-- Config (API key) then App Logic -->
+  <script src="config.js"></script>
+  <script src="main.js"></script>
+</body>
+</html>
