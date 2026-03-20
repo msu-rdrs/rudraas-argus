@@ -3,6 +3,9 @@
   "version": "1.0.0",
   "description": "RUDRAAS ARGUS — Geospatial Intelligence Platform",
   "scripts": {
-    "start": "npx live-server --port=3000 --no-browser"
+    "start": "node server.js"
+  },
+  "dependencies": {
+    "express": "^4.21.0"
   }
 }

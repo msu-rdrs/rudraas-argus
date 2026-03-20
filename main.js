@@ -21,17 +21,16 @@
       i++;
       setTimeout(printLine, 300);
     } else {
-      // Last line printed — wait 1s then fade out
       setTimeout(() => {
         const bootScreen = document.getElementById("boot-screen");
         bootScreen.classList.add("fade-out");
-        // Remove from DOM after fade completes
-        setTimeout(() => bootScreen.remove(), 500);
+        setTimeout(() => bootScreen.remove(), 600);
       }, 1000);
     }
   }
 
-  printLine();
+  // Let the emblem pulse for 1.5s before terminal text starts
+  setTimeout(printLine, 1500);
 })();
 
 // Disable the default Cesium Ion token warning
@@ -39,7 +38,6 @@ Cesium.Ion.defaultAccessToken = undefined;
 
 // ── Initialize the Cesium Viewer ──
 const viewer = new Cesium.Viewer("cesiumContainer", {
-  // Disable all UI widgets
   animation: false,
   timeline: false,
   baseLayerPicker: false,
@@ -52,13 +50,11 @@ const viewer = new Cesium.Viewer("cesiumContainer", {
   selectionIndicator: false,
   navigationHelpButton: false,
   navigationInstructionsInitiallyVisible: false,
-  creditContainer: document.createElement("div"), // hide credits
+  creditContainer: document.createElement("div"),
 
-  // Black sky background
   skyBox: false,
   skyAtmosphere: false,
 
-  // Use a simple black base imagery instead of Bing
   baseLayer: new Cesium.ImageryLayer(
     new Cesium.SingleTileImageryProvider({
       url: "data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAAC0lEQVQI12NgAAIABQABNjN9GQAAAAlwSFlzAAAWJQAAFiUBSVIk8AAAABl0RVh0U29mdHdhcmUAcGFpbnQubmV0IDQuMC41ZYUyZQAAAA1JREFUGFdjYGBg+A8AAQQBAScLuN4AAAAASUVORK5CYII=",
@@ -66,16 +62,14 @@ const viewer = new Cesium.Viewer("cesiumContainer", {
     })
   ),
 
-  // Smooth rendering
   requestRenderMode: false,
   maximumRenderTimeChange: Infinity,
 });
 
-// Black background for space
-viewer.scene.backgroundColor = Cesium.Color.BLACK;
-viewer.scene.globe.baseColor = Cesium.Color.BLACK;
+// Deep navy/black background
+viewer.scene.backgroundColor = Cesium.Color.fromCssColorString("#050A15");
+viewer.scene.globe.baseColor = Cesium.Color.fromCssColorString("#050A15");
 
-// Disable the moon and sun for clean look (guard against undefined when skyBox is off)
 if (viewer.scene.moon) viewer.scene.moon.show = false;
 if (viewer.scene.sun) viewer.scene.sun.show = false;
 
@@ -84,13 +78,13 @@ if (viewer.scene.sun) viewer.scene.sun.show = false;
   try {
     const tileset = await Cesium.Cesium3DTileset.fromUrl(CONFIG.TILES_URL);
     viewer.scene.primitives.add(tileset);
-    console.log("ARGUS: Google 3D Tiles loaded successfully.");
+    console.log("ARGUS: Google 3D Tiles loaded.");
   } catch (error) {
     console.error("ARGUS: Failed to load 3D Tiles —", error);
   }
 })();
 
-// ── Set Default Camera — India ──
+// ── Default Camera — India ──
 viewer.camera.setView({
   destination: Cesium.Cartesian3.fromDegrees(78.9629, 20.5937, 5000000),
   orientation: {
@@ -113,20 +107,15 @@ updateClock();
 
 // ── Camera Coordinates Display ──
 function updateCameraCoords() {
-  const camera = viewer.camera;
-  const carto = Cesium.Cartographic.fromCartesian(camera.positionWC);
-
+  const carto = Cesium.Cartographic.fromCartesian(viewer.camera.positionWC);
   if (carto) {
     const lat = Cesium.Math.toDegrees(carto.latitude).toFixed(4);
     const lng = Cesium.Math.toDegrees(carto.longitude).toFixed(4);
-    const alt = (carto.height / 1000).toFixed(1); // convert to km
-
+    const alt = (carto.height / 1000).toFixed(1);
     document.getElementById("camera-coords").innerHTML =
       `LAT: ${lat}&deg; &nbsp; LNG: ${lng}&deg; &nbsp; ALT: ${alt} km`;
   }
 }
-
-// Update coordinates on every render frame
 viewer.scene.postRender.addEventListener(updateCameraCoords);
 
 // ── Search / Geocode ──
@@ -134,7 +123,6 @@ const searchBar = document.getElementById("search-bar");
 
 searchBar.addEventListener("keydown", async (e) => {
   if (e.key !== "Enter") return;
-
   const query = searchBar.value.trim();
   if (!query) return;
 
@@ -142,7 +130,6 @@ searchBar.addEventListener("keydown", async (e) => {
     const url =
       "https://nominatim.openstreetmap.org/search?format=json&limit=1&q=" +
       encodeURIComponent(query);
-
     const res = await fetch(url, {
       headers: { "User-Agent": "RUDRAAS-ARGUS/1.0" },
     });
@@ -158,15 +145,9 @@ searchBar.addEventListener("keydown", async (e) => {
 
     viewer.camera.flyTo({
       destination: Cesium.Cartesian3.fromDegrees(lon, lat, 50000),
-      orientation: {
-        heading: 0,
-        pitch: Cesium.Math.toRadians(-60),
-        roll: 0,
-      },
+      orientation: { heading: 0, pitch: Cesium.Math.toRadians(-60), roll: 0 },
       duration: 2,
     });
-
-    // Clear focus so keyboard doesn't interfere with globe controls
     searchBar.blur();
   } catch (err) {
     console.error("ARGUS: Geocode failed —", err);

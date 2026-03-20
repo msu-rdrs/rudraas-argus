@@ -5,6 +5,11 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
   <title>RUDRAAS ARGUS</title>
 
+  <!-- Google Fonts -->
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&family=Rajdhani:wght@400;500;600;700&family=Roboto+Mono:wght@300;400;500&display=swap" rel="stylesheet" />
+
   <!-- CesiumJS via CDN -->
   <script src="https://cesium.com/downloads/cesiumjs/releases/1.119/Build/Cesium/Cesium.js"></script>
   <link href="https://cesium.com/downloads/cesiumjs/releases/1.119/Build/Cesium/Widgets/widgets.css" rel="stylesheet" />
@@ -17,7 +22,7 @@
   <!-- Boot Screen -->
   <div id="boot-screen">
     <div id="boot-content">
-      <div id="boot-title">RUDRAAS DYNAMICS</div>
+      <img id="boot-emblem" src="./Rudraas Dynamics_EMBLEM.png" alt="Rudraas Dynamics Emblem" />
       <div id="boot-subtitle">ARGUS INTELLIGENCE PLATFORM</div>
       <div id="boot-terminal"></div>
     </div>
@@ -28,14 +33,29 @@
 
   <!-- Top Bar -->
   <div id="top-bar">
-    <div id="app-title">RUDRAAS ARGUS</div>
-    <input id="search-bar" type="text" placeholder="SEARCH TARGET LOCATION..." autocomplete="off" />
-    <div id="utc-clock">00:00:00</div>
+    <div id="top-bar-left">
+      <img id="app-logo" src="./Rudraas Dynamics_LOGO.png" alt="Rudraas Dynamics" />
+      <span id="app-title">ARGUS</span>
+    </div>
+    <div id="top-bar-center">
+      <input id="search-bar" type="text" placeholder="SEARCH TARGET LOCATION..." autocomplete="off" />
+      <button id="air-toggle" title="Toggle Aircraft Tracking">
+        <svg width="16" height="16" viewBox="0 0 24 24" fill="currentColor"><path d="M21 16v-2l-8-5V3.5A1.5 1.5 0 0 0 11.5 2 1.5 1.5 0 0 0 10 3.5V9l-8 5v2l8-2.5V19l-2 1.5V22l3.5-1 3.5 1v-1.5L13 19v-5.5l8 2.5z"/></svg>
+        <span>AIR</span>
+      </button>
+      <button id="air-refresh" title="Refresh Aircraft Data">
+        <svg id="refresh-icon" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M21 2v6h-6"/><path d="M3 12a9 9 0 0 1 15-6.7L21 8"/><path d="M3 22v-6h6"/><path d="M21 12a9 9 0 0 1-15 6.7L3 16"/></svg>
+      </button>
+    </div>
+    <div id="top-bar-right">
+      <div id="utc-label">UTC</div>
+      <div id="utc-clock">00:00:00</div>
+    </div>
   </div>
 
   <!-- Classification Strip -->
   <div id="classification-strip">
-    <span>SYSTEM ACTIVE &nbsp;|&nbsp; UNCLASSIFIED</span>
+    <span>SYSTEM ACTIVE &nbsp;&bull;&nbsp; UNCLASSIFIED</span>
   </div>
 
   <!-- Camera Coordinates -->
@@ -43,8 +63,34 @@
     LAT: ---.----&deg; &nbsp; LNG: ---.----&deg; &nbsp; ALT: ------m
   </div>
 
+  <!-- Aircraft Count HUD -->
+  <div id="aircraft-hud">AIRCRAFT TRACKED: 0</div>
+
+  <!-- Aircraft Intel Panel -->
+  <div id="aircraft-panel" class="hidden">
+    <div id="panel-header">
+      <span id="panel-title">AIRCRAFT INTEL</span>
+      <button id="panel-close">&times;</button>
+    </div>
+    <div id="panel-route">
+      <span id="panel-route-text">--- &rarr; ---</span>
+    </div>
+    <div id="panel-body">
+      <div class="panel-row"><span class="panel-label">CALLSIGN</span><span id="panel-callsign" class="panel-value">---</span></div>
+      <div class="panel-row"><span class="panel-label">OPERATOR</span><span id="panel-operator" class="panel-value">---</span></div>
+      <div class="panel-row"><span class="panel-label">REGISTRATION</span><span id="panel-reg" class="panel-value">---</span></div>
+      <div class="panel-row"><span class="panel-label">AIRCRAFT TYPE</span><span id="panel-type" class="panel-value">---</span></div>
+      <div class="panel-row"><span class="panel-label">COUNTRY</span><span id="panel-country" class="panel-value">---</span></div>
+      <div class="panel-row"><span class="panel-label">ALTITUDE</span><span id="panel-altitude" class="panel-value">---</span></div>
+      <div class="panel-row"><span class="panel-label">SPEED</span><span id="panel-speed" class="panel-value">---</span></div>
+      <div class="panel-row"><span class="panel-label">HEADING</span><span id="panel-heading" class="panel-value">---</span></div>
+      <div class="panel-row"><span class="panel-label">ICAO24</span><span id="panel-icao" class="panel-value">---</span></div>
+    </div>
+  </div>
+
   <!-- Config (API key) then App Logic -->
   <script src="config.js"></script>
   <script src="main.js"></script>
+  <script src="aircraft.js"></script>
 </body>
 </html>
