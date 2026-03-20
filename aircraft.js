@@ -1,26 +1,78 @@
-// ─── RUDRAAS ARGUS — Aircraft Tracking Module (v5 — Trails + Smart Sync) ───
-// Manual refresh with persistent entities, dead reckoning, and trailing paths.
+// ─── RUDRAAS ARGUS — Aircraft Tracking Module (v6 — Airport DB + Route Lines) ───
+// Smart sync, dead reckoning, trailing paths, geodesic origin trajectories.
 
 (function () {
   const MILITARY_PREFIXES = [
     "RCH", "EVAC", "JAKE", "CNV", "VALOR", "PAT", "REACH", "NAVY", "ARMY",
   ];
   const EARTH_RADIUS = 6371000;
-  const TRAIL_MAX_POINTS = 30;       // max history positions per aircraft
-  const TRAIL_SAMPLE_INTERVAL = 1000; // push a trail point every 1 second (ms)
+  const TRAIL_MAX_POINTS = 30;
+  const TRAIL_SAMPLE_INTERVAL = 1000;
+  const AIRPORT_DB_URL =
+    "https://raw.githubusercontent.com/mwgg/Airports/master/airports.json";
 
   let isActive = false;
 
-  // aircraftState: id -> { entity, trailEntity, lat, lng, alt, velocity, heading,
-  //                         callsign, type, history[], lastTrailTime, lastUpdate }
+  // aircraftState: id -> { entity, trailEntity, routeEntity, lat, lng, alt,
+  //   velocity, heading, callsign, type, origIata, history[], lastTrailTime, lastUpdate }
   const aircraftState = new Map();
   const aircraftRaw   = new Map();
+
+  // Airport lookup: IATA code (uppercase) -> { name, lat, lng }
+  const airportByIata = new Map();
+  let airportDbLoaded = false;
 
   const airToggle   = document.getElementById("air-toggle");
   const airRefresh  = document.getElementById("air-refresh");
   const aircraftHud = document.getElementById("aircraft-hud");
   const panel       = document.getElementById("aircraft-panel");
   const panelClose  = document.getElementById("panel-close");
+
+  // ═══════════════════════════════════════════
+  //  Airport Database Loader
+  // ═══════════════════════════════════════════
+
+  (async function loadAirportDb() {
+    try {
+      console.log("ARGUS-AIR: Loading airport database...");
+      const res = await fetch(AIRPORT_DB_URL);
+      if (!res.ok) throw new Error(`HTTP ${res.status}`);
+
+      const data = await res.json();
+
+      // The mwgg/Airports JSON is an object keyed by ICAO code.
+      // Each entry has: iata, name, lat, lon, etc.
+      for (const icao in data) {
+        const apt = data[icao];
+        const iata = (apt.iata || "").trim().toUpperCase();
+        if (iata && iata.length === 3 && apt.lat != null && apt.lon != null) {
+          airportByIata.set(iata, {
+            name: apt.name || iata,
+            lat: parseFloat(apt.lat),
+            lng: parseFloat(apt.lon),
+          });
+        }
+      }
+
+      airportDbLoaded = true;
+      console.log(`ARGUS-AIR: Airport DB loaded — ${airportByIata.size} IATA entries.`);
+    } catch (err) {
+      console.warn("ARGUS-AIR: Airport DB failed to load —", err.message);
+    }
+  })();
+
+  // Look up airport by IATA code. Returns { name, lat, lng } or null.
+  function lookupAirport(iata) {
+    if (!iata || !airportDbLoaded) return null;
+    return airportByIata.get(iata.trim().toUpperCase()) || null;
+  }
+
+  // Return full name for an IATA code, or the code itself as fallback.
+  function airportDisplayName(iata) {
+    if (!iata) return "N/A";
+    const apt = lookupAirport(iata);
+    return apt ? `${iata} — ${apt.name}` : iata;
+  }
 
   // ═══════════════════════════════════════════
   //  SVG Airplane Icon Generator (48x48 canvas)
@@ -114,6 +166,12 @@
     return Cesium.Color.fromCssColorString("#6B7280").withAlpha(0.4);
   }
 
+  function getRouteColorForType(t) {
+    if (t === "military") return Cesium.Color.fromCssColorString("#FF8C00").withAlpha(0.3);
+    if (t === "commercial") return Cesium.Color.fromCssColorString("#00E5FF").withAlpha(0.3);
+    return Cesium.Color.fromCssColorString("#6B7280").withAlpha(0.3);
+  }
+
   // ═══════════════════════════════════════════
   //  Camera bounding box
   // ═══════════════════════════════════════════
@@ -130,7 +188,7 @@
   }
 
   // ═══════════════════════════════════════════
-  //  Remove a single aircraft + its trail
+  //  Remove a single aircraft + trail + route
   // ═══════════════════════════════════════════
 
   function removeAircraft(id) {
@@ -138,13 +196,10 @@
     if (!ac) return;
     viewer.entities.remove(ac.entity);
     if (ac.trailEntity) viewer.entities.remove(ac.trailEntity);
+    if (ac.routeEntity) viewer.entities.remove(ac.routeEntity);
     aircraftState.delete(id);
     aircraftRaw.delete(id);
   }
-
-  // ═══════════════════════════════════════════
-  //  Wipe all aircraft from the globe
-  // ═══════════════════════════════════════════
 
   function clearAllAircraft() {
     for (const [id] of aircraftState) {
@@ -153,7 +208,7 @@
   }
 
   // ═══════════════════════════════════════════
-  //  Build trail polyline positions array
+  //  Build trail polyline positions
   // ═══════════════════════════════════════════
 
   function buildTrailPositions(ac) {
@@ -161,9 +216,44 @@
     for (const pt of ac.history) {
       positions.push(Cesium.Cartesian3.fromDegrees(pt.lng, pt.lat, pt.alt));
     }
-    // Add current position as the trail tip
     positions.push(Cesium.Cartesian3.fromDegrees(ac.lng, ac.lat, ac.alt));
     return positions;
+  }
+
+  // ═══════════════════════════════════════════
+  //  Create / update origin route line
+  // ═══════════════════════════════════════════
+
+  function createRouteEntity(origIata, ac) {
+    const apt = lookupAirport(origIata);
+    if (!apt) return null;
+
+    return viewer.entities.add({
+      polyline: {
+        positions: Cesium.Cartesian3.fromDegreesArrayHeights([
+          apt.lng, apt.lat, 0,
+          ac.lng,  ac.lat,  ac.alt,
+        ]),
+        width: 1.5,
+        material: new Cesium.PolylineDashMaterialProperty({
+          color: getRouteColorForType(ac.type),
+          dashLength: 16,
+        }),
+        arcType: Cesium.ArcType.GEODESIC,
+        clampToGround: false,
+      },
+    });
+  }
+
+  function updateRouteEntity(ac) {
+    if (!ac.routeEntity || !ac.origIata) return;
+    const apt = lookupAirport(ac.origIata);
+    if (!apt) return;
+
+    ac.routeEntity.polyline.positions = Cesium.Cartesian3.fromDegreesArrayHeights([
+      apt.lng, apt.lat, 0,
+      ac.lng,  ac.lat,  ac.alt,
+    ]);
   }
 
   // ═══════════════════════════════════════════
@@ -220,6 +310,7 @@
       const altFeet  = f.alt ?? f.altitude ?? f.alt_baro ?? null;
       const spdKts   = f.spd ?? f.speed ?? f.ground_speed ?? f.gspeed ?? null;
       const track    = f.track ?? f.heading ?? f.dir ?? null;
+      const origIata = (f.orig_iata || f.origin || "").trim().toUpperCase();
 
       if (id == null || lat == null || lng == null) continue;
 
@@ -236,7 +327,7 @@
       const rotation  = Cesium.Math.toRadians(-hdg);
 
       if (aircraftState.has(id)) {
-        // ── UPDATE existing aircraft — keep entity + history alive ──
+        // ── UPDATE existing ──
         const ac = aircraftState.get(id);
         ac.lat = lat;
         ac.lng = lng;
@@ -245,6 +336,7 @@
         ac.heading = hdg;
         ac.callsign = callsign;
         ac.type = type;
+        ac.origIata = origIata;
         ac.lastUpdate = now;
 
         ac.entity.position = Cesium.Cartesian3.fromDegrees(lng, lat, altMeters);
@@ -253,12 +345,17 @@
         ac.entity.label.text = callsign || id;
         ac.entity.label.fillColor = labelClr;
 
-        // Update trail color in case type changed
-        if (ac.trailEntity) {
-          ac.trailEntity.polyline.material = trailClr;
+        if (ac.trailEntity) ac.trailEntity.polyline.material = trailClr;
+
+        // Update route line endpoint to fresh position
+        updateRouteEntity(ac);
+
+        // If we didn't have a route before (DB wasn't loaded yet), try now
+        if (!ac.routeEntity && origIata) {
+          ac.routeEntity = createRouteEntity(origIata, ac);
         }
       } else {
-        // ── CREATE new aircraft ──
+        // ── CREATE new ──
         const entity = viewer.entities.add({
           position: Cesium.Cartesian3.fromDegrees(lng, lat, altMeters),
           billboard: {
@@ -286,7 +383,6 @@
         });
         entity._flightId = id;
 
-        // Create trail polyline entity (starts empty, built up by dead reckoning)
         const trailEntity = viewer.entities.add({
           polyline: {
             positions: [Cesium.Cartesian3.fromDegrees(lng, lat, altMeters)],
@@ -296,23 +392,33 @@
           },
         });
 
-        aircraftState.set(id, {
+        // Build the temporary ac object so createRouteEntity can read ac.type / ac.alt
+        const acObj = {
           entity,
           trailEntity,
+          routeEntity: null,
           lat, lng,
           alt: altMeters,
           velocity: velMs,
           heading: hdg,
           callsign,
           type,
+          origIata,
           history: [{ lat, lng, alt: altMeters }],
           lastTrailTime: now,
           lastUpdate: now,
-        });
+        };
+
+        // Create geodesic route line from origin airport
+        if (origIata) {
+          acObj.routeEntity = createRouteEntity(origIata, acObj);
+        }
+
+        aircraftState.set(id, acObj);
       }
     }
 
-    // ── REMOVE stale aircraft not in this response ──
+    // ── REMOVE stale ──
     for (const [id] of aircraftState) {
       if (!freshIds.has(id)) {
         removeAircraft(id);
@@ -360,20 +466,21 @@
         ac.lng += dLng;
 
         ac.entity.position = Cesium.Cartesian3.fromDegrees(ac.lng, ac.lat, ac.alt);
+
+        // Keep the route line tip tracking the aircraft
+        updateRouteEntity(ac);
       }
 
-      // ── Sample trail point every TRAIL_SAMPLE_INTERVAL ms ──
+      // ── Sample trail point every 1s ──
       if (now - ac.lastTrailTime >= TRAIL_SAMPLE_INTERVAL) {
         ac.history.push({ lat: ac.lat, lng: ac.lng, alt: ac.alt });
 
-        // Cap at TRAIL_MAX_POINTS
         if (ac.history.length > TRAIL_MAX_POINTS) {
           ac.history.shift();
         }
 
         ac.lastTrailTime = now;
 
-        // Rebuild polyline positions
         if (ac.trailEntity) {
           ac.trailEntity.polyline.positions = buildTrailPositions(ac);
         }
@@ -453,8 +560,8 @@
       const altFeet  = f.alt ?? f.altitude ?? f.alt_baro;
       const spdKts   = f.spd ?? f.speed ?? f.ground_speed ?? f.gspeed;
       const track    = f.track ?? f.heading ?? f.dir;
-      const origIata = (f.orig_iata || f.origin || "").trim() || "N/A";
-      const destIata = (f.dest_iata || f.destination || "").trim() || "N/A";
+      const origIata = (f.orig_iata || f.origin || "").trim().toUpperCase() || "";
+      const destIata = (f.dest_iata || f.destination || "").trim().toUpperCase() || "";
       const reg      = (f.reg || f.registration || "").trim() || "CLASSIFIED";
       const acType   = (f.type || f.equipment || f.aircraft_type || "").trim() || "CLASSIFIED";
 
@@ -464,8 +571,14 @@
       }
       if (!operator) operator = "PRIVATE / CLASSIFIED";
 
+      // Resolve full airport names
+      const origName = lookupAirport(origIata);
+      const destName = lookupAirport(destIata);
+      const codesLine = `${origIata || "N/A"}-${destIata || "N/A"}`;
+      const namesLine = `${origName ? origName.name : (origIata || "N/A")} &rarr; ${destName ? destName.name : (destIata || "N/A")}`;
+
       document.getElementById("panel-route-text").innerHTML =
-        `${origIata} &rarr; ${destIata}`;
+        `${codesLine} | ${namesLine}`;
       document.getElementById("panel-callsign").textContent = callsign;
       document.getElementById("panel-operator").textContent = operator;
       document.getElementById("panel-reg").textContent      = reg;
@@ -488,5 +601,5 @@
 
   panelClose.addEventListener("click", () => panel.classList.add("hidden"));
 
-  console.log("ARGUS-AIR: Module v5 loaded (smart sync, trails, dead reckoning).");
+  console.log("ARGUS-AIR: Module v6 loaded (airport DB, route lines, smart sync).");
 })();
