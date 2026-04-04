@@ -39,8 +39,8 @@
     { id: "CAM-002", name: "NAMIBIA DESERT LIVE",      lat: -24.7256, lng: 15.2639,   ytId: "ydYDqZQpim8" },
     // NATURE & ENVIRONMENT
     { id: "CAM-003", name: "FOREST WATERFALL CAM",     lat: -22.9711, lng: -43.1822,  ytId: "eKFTSSKCzWA" },
-    { id: "CAM-004", name: "EXPLORE AFRICA WILDLIFE",  lat: -2.3333,  lng: 34.8333,   ytId: "dxJdLi-cFOs" },
-    { id: "CAM-005", name: "EXPLORE ANIMAL RESCUE",    lat: 34.0522,  lng: -118.2437, ytId: "G3cOHn0ByGQ" },
+    { id: "CAM-004", name: "EXPLORE AFRICA WILDLIFE",  lat: -2.3333,  lng: 34.8333,   ytId: "5qap5aO4i9A" },
+    { id: "CAM-005", name: "EXPLORE ANIMAL RESCUE",    lat: 34.0522,  lng: -118.2437, ytId: "lTRiuFIWV54" },
     // GLOBAL AMBIENT FEEDS (24/7 live — verified embeddable)
     { id: "CAM-006", name: "NYC TIMES SQUARE",         lat: 40.7580,  lng: -73.9855,  ytId: "jfKfPfyJRdk" },
     { id: "CAM-007", name: "TOKYO SHIBUYA",            lat: 35.6595,  lng: 139.7005,  ytId: "4xDzrJKXOOY" },
