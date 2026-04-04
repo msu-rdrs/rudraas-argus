@@ -1,5 +1,6 @@
-// ─── RUDRAAS ARGUS — Aircraft Tracking Module (v6 — Airport DB + Route Lines) ───
-// Smart sync, dead reckoning, trailing paths, geodesic origin trajectories.
+// ─── RUDRAAS ARGUS — Aircraft Tracking Module (v7 — CallbackProperty Positions) ───
+// Smart sync, CallbackProperty dead reckoning, trailing paths, geodesic routes.
+// ZERO preUpdate position writes. All movement via Cesium's render pipeline.
 
 (function () {
   const MILITARY_PREFIXES = [
@@ -14,11 +15,12 @@
   let isActive = false;
 
   // aircraftState: id -> { entity, trailEntity, routeEntity, lat, lng, alt,
-  //   velocity, heading, callsign, type, origIata, history[], lastTrailTime, lastUpdate }
+  //   velocity, heading, callsign, type, origIata, history[], lastTrailTime,
+  //   fetchTime (JulianDate), fetchLat, fetchLng }
   const aircraftState = new Map();
   const aircraftRaw   = new Map();
 
-  // Airport lookup: IATA code (uppercase) -> { name, lat, lng }
+  // Airport lookup
   const airportByIata = new Map();
   let airportDbLoaded = false;
 
@@ -27,6 +29,9 @@
   const aircraftHud = document.getElementById("aircraft-hud");
   const panel       = document.getElementById("aircraft-panel");
   const panelClose  = document.getElementById("panel-close");
+
+  // Trail sampling interval
+  let trailInterval = null;
 
   // ═══════════════════════════════════════════
   //  Airport Database Loader
@@ -40,8 +45,6 @@
 
       const data = await res.json();
 
-      // The mwgg/Airports JSON is an object keyed by ICAO code.
-      // Each entry has: iata, name, lat, lon, etc.
       for (const icao in data) {
         const apt = data[icao];
         const iata = (apt.iata || "").trim().toUpperCase();
@@ -61,13 +64,14 @@
     }
   })();
 
-  // Look up airport by IATA code. Returns { name, lat, lng } or null.
   function lookupAirport(iata) {
     if (!iata || !airportDbLoaded) return null;
     return airportByIata.get(iata.trim().toUpperCase()) || null;
   }
 
-  // Return full name for an IATA code, or the code itself as fallback.
+  // Expose globally so the search bar can resolve airport codes
+  window._argusLookupAirport = lookupAirport;
+
   function airportDisplayName(iata) {
     if (!iata) return "N/A";
     const apt = lookupAirport(iata);
@@ -131,9 +135,9 @@
     return iconCache[fillColor];
   }
 
-  const ICON_COMMERCIAL = makeAircraftIcon("#00E5FF");
-  const ICON_MILITARY   = makeAircraftIcon("#FF8C00");
-  const ICON_UNKNOWN    = makeAircraftIcon("#6B7280");
+  const ICON_COMMERCIAL = makeAircraftIcon("#FFFF00");
+  const ICON_MILITARY   = makeAircraftIcon("#FF0000");
+  const ICON_UNKNOWN    = makeAircraftIcon("#FFFF00");
 
   // ═══════════════════════════════════════════
   //  Classification helpers
@@ -155,21 +159,60 @@
   }
 
   function getLabelColorForType(t) {
-    if (t === "military") return Cesium.Color.fromCssColorString("#FF8C00");
-    if (t === "commercial") return Cesium.Color.fromCssColorString("#00E5FF");
-    return Cesium.Color.fromCssColorString("#6B7280");
+    if (t === "military") return Cesium.Color.fromCssColorString("#FF0000");
+    if (t === "commercial") return Cesium.Color.fromCssColorString("#FFFF00");
+    return Cesium.Color.fromCssColorString("#FFFF00");
   }
 
   function getTrailColorForType(t) {
-    if (t === "military") return Cesium.Color.fromCssColorString("#FF8C00").withAlpha(0.4);
-    if (t === "commercial") return Cesium.Color.fromCssColorString("#00E5FF").withAlpha(0.4);
-    return Cesium.Color.fromCssColorString("#6B7280").withAlpha(0.4);
+    if (t === "military") return Cesium.Color.fromCssColorString("#FF0000").withAlpha(0.7);
+    if (t === "commercial") return Cesium.Color.fromCssColorString("#FFFF00").withAlpha(0.7);
+    return Cesium.Color.fromCssColorString("#FFFF00").withAlpha(0.7);
   }
 
   function getRouteColorForType(t) {
-    if (t === "military") return Cesium.Color.fromCssColorString("#FF8C00").withAlpha(0.3);
-    if (t === "commercial") return Cesium.Color.fromCssColorString("#00E5FF").withAlpha(0.3);
-    return Cesium.Color.fromCssColorString("#6B7280").withAlpha(0.3);
+    if (t === "military") return Cesium.Color.fromCssColorString("#FF0000").withAlpha(0.8);
+    if (t === "commercial") return Cesium.Color.fromCssColorString("#FFFF00").withAlpha(0.8);
+    return Cesium.Color.fromCssColorString("#FFFF00").withAlpha(0.8);
+  }
+
+  // ═══════════════════════════════════════════
+  //  Dead reckoning math — pure function
+  //  Given a base position, velocity, heading,
+  //  and elapsed seconds, returns new lat/lng.
+  // ═══════════════════════════════════════════
+
+  function deadReckonPosition(baseLat, baseLng, velocity, headingDeg, dtSeconds) {
+    // Strict null/NaN guards — return base position if anything is invalid
+    if (!isFinite(baseLat) || !isFinite(baseLng)) {
+      return { lat: baseLat || 0, lng: baseLng || 0 };
+    }
+    if (!isFinite(velocity) || velocity <= 0 ||
+        !isFinite(dtSeconds) || dtSeconds <= 0 ||
+        !isFinite(headingDeg)) {
+      return { lat: baseLat, lng: baseLng };
+    }
+
+    const dt = Math.min(dtSeconds, 120);
+    const hdgRad = (headingDeg * Math.PI) / 180;
+    const latRad = (baseLat * Math.PI) / 180;
+    const cosLat = Math.cos(latRad);
+    const DEG = 180 / Math.PI;
+
+    const dist = velocity * dt;
+    const dLat = (dist * Math.cos(hdgRad)) / EARTH_RADIUS * DEG;
+    const dLng = cosLat > 1e-6
+      ? (dist * Math.sin(hdgRad)) / (EARTH_RADIUS * cosLat) * DEG
+      : 0;
+
+    const newLat = baseLat + dLat;
+    const newLng = baseLng + dLng;
+
+    // Final NaN guard
+    if (isNaN(newLat) || isNaN(newLng)) {
+      return { lat: baseLat, lng: baseLng };
+    }
+    return { lat: newLat, lng: newLng };
   }
 
   // ═══════════════════════════════════════════
@@ -208,20 +251,7 @@
   }
 
   // ═══════════════════════════════════════════
-  //  Build trail polyline positions
-  // ═══════════════════════════════════════════
-
-  function buildTrailPositions(ac) {
-    const positions = [];
-    for (const pt of ac.history) {
-      positions.push(Cesium.Cartesian3.fromDegrees(pt.lng, pt.lat, pt.alt));
-    }
-    positions.push(Cesium.Cartesian3.fromDegrees(ac.lng, ac.lat, ac.alt));
-    return positions;
-  }
-
-  // ═══════════════════════════════════════════
-  //  Create / update origin route line
+  //  Create origin route line
   // ═══════════════════════════════════════════
 
   function createRouteEntity(origIata, ac) {
@@ -230,10 +260,35 @@
 
     return viewer.entities.add({
       polyline: {
-        positions: Cesium.Cartesian3.fromDegreesArrayHeights([
-          apt.lng, apt.lat, 0,
-          ac.lng,  ac.lat,  ac.alt,
-        ]),
+        positions: new Cesium.CallbackProperty(function (time, result) {
+          try {
+            if (!ac.fetchTime) {
+              return Cesium.Cartesian3.fromDegreesArrayHeights([0, 0, 0, 0, 0, 0]);
+            }
+            const dt = Cesium.JulianDate.secondsDifference(time, ac.fetchTime);
+            const pos = deadReckonPosition(ac.fetchLat, ac.fetchLng, ac.velocity, ac.heading, isFinite(dt) ? dt : 0);
+
+            if (isNaN(pos.lat) || isNaN(pos.lng) || !isFinite(ac.alt)) {
+              return Cesium.Cartesian3.fromDegreesArrayHeights([0, 0, 0, 0, 0, 0]);
+            }
+
+            const arr = Cesium.Cartesian3.fromDegreesArrayHeights([
+              apt.lng, apt.lat, 0,
+              pos.lng, pos.lat, ac.alt,
+            ]);
+
+            // Final Cartesian3 NaN guard
+            for (let i = 0; i < arr.length; i++) {
+              if (isNaN(arr[i].x) || isNaN(arr[i].y) || isNaN(arr[i].z)) {
+                return Cesium.Cartesian3.fromDegreesArrayHeights([0, 0, 0, 0, 0, 0]);
+              }
+            }
+
+            return arr;
+          } catch (e) {
+            return Cesium.Cartesian3.fromDegreesArrayHeights([0, 0, 0, 0, 0, 0]);
+          }
+        }, false),
         width: 1.5,
         material: new Cesium.PolylineDashMaterialProperty({
           color: getRouteColorForType(ac.type),
@@ -245,15 +300,17 @@
     });
   }
 
-  function updateRouteEntity(ac) {
-    if (!ac.routeEntity || !ac.origIata) return;
-    const apt = lookupAirport(ac.origIata);
-    if (!apt) return;
+  // ═══════════════════════════════════════════
+  //  Get current dead-reckoned position for an
+  //  aircraft state object. Used by CallbackProperty.
+  // ═══════════════════════════════════════════
 
-    ac.routeEntity.polyline.positions = Cesium.Cartesian3.fromDegreesArrayHeights([
-      apt.lng, apt.lat, 0,
-      ac.lng,  ac.lat,  ac.alt,
-    ]);
+  function getCurrentPosition(ac) {
+    if (!ac.fetchTime) return { lat: ac.fetchLat || 0, lng: ac.fetchLng || 0 };
+    const now = Cesium.JulianDate.now();
+    const dt = Cesium.JulianDate.secondsDifference(now, ac.fetchTime);
+    if (!isFinite(dt)) return { lat: ac.fetchLat || 0, lng: ac.fetchLng || 0 };
+    return deadReckonPosition(ac.fetchLat, ac.fetchLng, ac.velocity, ac.heading, dt);
   }
 
   // ═══════════════════════════════════════════
@@ -296,10 +353,12 @@
 
   // ═══════════════════════════════════════════
   //  Ingest FR24 data — SMART SYNC
+  //  Positions use CallbackProperty with dead
+  //  reckoning. ZERO manual entity.position = ...
   // ═══════════════════════════════════════════
 
   function ingestFR24(flights) {
-    const now = performance.now();
+    const fetchTime = Cesium.JulianDate.now();
     const freshIds = new Set();
 
     for (const f of flights) {
@@ -327,8 +386,10 @@
       const rotation  = Cesium.Math.toRadians(-hdg);
 
       if (aircraftState.has(id)) {
-        // ── UPDATE existing ──
+        // ── UPDATE existing — reset the dead reckoning base ──
         const ac = aircraftState.get(id);
+        ac.fetchLat = lat;
+        ac.fetchLng = lng;
         ac.lat = lat;
         ac.lng = lng;
         ac.alt = altMeters;
@@ -337,9 +398,9 @@
         ac.callsign = callsign;
         ac.type = type;
         ac.origIata = origIata;
-        ac.lastUpdate = now;
+        ac.fetchTime = Cesium.JulianDate.clone(fetchTime);
 
-        ac.entity.position = Cesium.Cartesian3.fromDegrees(lng, lat, altMeters);
+        // Update visual properties (NOT position — CallbackProperty handles that)
         ac.entity.billboard.image = icon;
         ac.entity.billboard.rotation = rotation;
         ac.entity.label.text = callsign || id;
@@ -347,17 +408,53 @@
 
         if (ac.trailEntity) ac.trailEntity.polyline.material = trailClr;
 
-        // Update route line endpoint to fresh position
-        updateRouteEntity(ac);
-
-        // If we didn't have a route before (DB wasn't loaded yet), try now
+        // Try creating route if DB wasn't loaded before
         if (!ac.routeEntity && origIata) {
           ac.routeEntity = createRouteEntity(origIata, ac);
         }
       } else {
-        // ── CREATE new ──
+        // ── CREATE new — position is a CallbackProperty ──
+        const acObj = {
+          entity: null,
+          trailEntity: null,
+          routeEntity: null,
+          fetchLat: lat,
+          fetchLng: lng,
+          lat, lng,
+          alt: altMeters,
+          velocity: velMs,
+          heading: hdg,
+          callsign,
+          type,
+          origIata,
+          fetchTime: Cesium.JulianDate.clone(fetchTime),
+          history: [{ lat, lng, alt: altMeters }],
+          lastTrailTime: performance.now(),
+        };
+
+        // Cache a safe fallback position from the raw API data
+        const safeFallback = Cesium.Cartesian3.fromDegrees(lng, lat, altMeters);
+
         const entity = viewer.entities.add({
-          position: Cesium.Cartesian3.fromDegrees(lng, lat, altMeters),
+          // CallbackProperty: Cesium calls this inside its render pipeline
+          // with its own time, synced to the camera matrix. Zero desync.
+          position: new Cesium.CallbackProperty(function (time, result) {
+            try {
+              if (!acObj.fetchTime) {
+                return Cesium.Cartesian3.clone(safeFallback, result);
+              }
+              const dt = Cesium.JulianDate.secondsDifference(time, acObj.fetchTime);
+              const pos = deadReckonPosition(acObj.fetchLat, acObj.fetchLng, acObj.velocity, acObj.heading, dt);
+
+              if (isNaN(pos.lat) || isNaN(pos.lng) || !isFinite(acObj.alt)) {
+                return Cesium.Cartesian3.clone(safeFallback, result);
+              }
+
+              return Cesium.Cartesian3.fromDegrees(pos.lng, pos.lat, acObj.alt, undefined, result);
+            } catch (e) {
+              return Cesium.Cartesian3.clone(safeFallback, result);
+            }
+          }, false),
           billboard: {
             image: icon,
             width: 22,
@@ -366,7 +463,6 @@
             alignedAxis: Cesium.Cartesian3.UNIT_Z,
             verticalOrigin: Cesium.VerticalOrigin.CENTER,
             horizontalOrigin: Cesium.HorizontalOrigin.CENTER,
-            disableDepthTestDistance: Number.POSITIVE_INFINITY,
           },
           label: {
             text: callsign || id,
@@ -378,38 +474,21 @@
             verticalOrigin: Cesium.VerticalOrigin.BOTTOM,
             pixelOffset: new Cesium.Cartesian2(0, -16),
             distanceDisplayCondition: new Cesium.DistanceDisplayCondition(0, 500000),
-            disableDepthTestDistance: Number.POSITIVE_INFINITY,
           },
         });
         entity._flightId = id;
+        acObj.entity = entity;
 
         const trailEntity = viewer.entities.add({
           polyline: {
-            positions: [Cesium.Cartesian3.fromDegrees(lng, lat, altMeters)],
+            positions: [Cesium.Cartesian3.fromDegrees(lng, lat, altMeters), Cesium.Cartesian3.fromDegrees(lng, lat, altMeters)],
             width: 2,
             material: trailClr,
             clampToGround: false,
           },
         });
+        acObj.trailEntity = trailEntity;
 
-        // Build the temporary ac object so createRouteEntity can read ac.type / ac.alt
-        const acObj = {
-          entity,
-          trailEntity,
-          routeEntity: null,
-          lat, lng,
-          alt: altMeters,
-          velocity: velMs,
-          heading: hdg,
-          callsign,
-          type,
-          origIata,
-          history: [{ lat, lng, alt: altMeters }],
-          lastTrailTime: now,
-          lastUpdate: now,
-        };
-
-        // Create geodesic route line from origin airport
         if (origIata) {
           acObj.routeEntity = createRouteEntity(origIata, acObj);
         }
@@ -429,66 +508,46 @@
   }
 
   // ═══════════════════════════════════════════
-  //  Dead Reckoning + Trail Sampling — 60fps
+  //  Trail Sampling — setInterval, NOT preUpdate
+  //  Only samples position and updates polyline.
+  //  ZERO entity.position writes.
   // ═══════════════════════════════════════════
 
-  let lastFrameTime = performance.now();
+  function startTrailSampling() {
+    stopTrailSampling();
+    trailInterval = setInterval(() => {
+      if (!isActive || aircraftState.size === 0) return;
 
-  function deadReckon() {
-    if (!isActive || aircraftState.size === 0) {
-      lastFrameTime = performance.now();
-      return;
-    }
+      for (const [, ac] of aircraftState) {
+        const pos = getCurrentPosition(ac);
+        // Update the state's lat/lng for trail history
+        ac.lat = pos.lat;
+        ac.lng = pos.lng;
 
-    const now = performance.now();
-    const dt = (now - lastFrameTime) / 1000;
-    lastFrameTime = now;
-
-    if (dt <= 0 || dt > 2) return;
-
-    const DEG = 180 / Math.PI;
-
-    for (const [, ac] of aircraftState) {
-      // ── Move the aircraft ──
-      if (ac.velocity > 0) {
-        const hdgRad = (ac.heading * Math.PI) / 180;
-        const latRad = (ac.lat * Math.PI) / 180;
-        const cosLat = Math.cos(latRad);
-
-        const dist = ac.velocity * dt;
-        const dLat = (dist * Math.cos(hdgRad)) / EARTH_RADIUS * DEG;
-        const dLng =
-          cosLat > 1e-6
-            ? (dist * Math.sin(hdgRad)) / (EARTH_RADIUS * cosLat) * DEG
-            : 0;
-
-        ac.lat += dLat;
-        ac.lng += dLng;
-
-        ac.entity.position = Cesium.Cartesian3.fromDegrees(ac.lng, ac.lat, ac.alt);
-
-        // Keep the route line tip tracking the aircraft
-        updateRouteEntity(ac);
-      }
-
-      // ── Sample trail point every 1s ──
-      if (now - ac.lastTrailTime >= TRAIL_SAMPLE_INTERVAL) {
-        ac.history.push({ lat: ac.lat, lng: ac.lng, alt: ac.alt });
-
+        ac.history.push({ lat: pos.lat, lng: pos.lng, alt: ac.alt });
         if (ac.history.length > TRAIL_MAX_POINTS) {
           ac.history.shift();
         }
 
-        ac.lastTrailTime = now;
-
         if (ac.trailEntity) {
-          ac.trailEntity.polyline.positions = buildTrailPositions(ac);
+          const positions = [];
+          for (const pt of ac.history) {
+            positions.push(Cesium.Cartesian3.fromDegrees(pt.lng, pt.lat, pt.alt));
+          }
+          // Add current dead-reckoned position as the trail tip
+          positions.push(Cesium.Cartesian3.fromDegrees(pos.lng, pos.lat, ac.alt));
+          ac.trailEntity.polyline.positions = positions;
         }
       }
-    }
+    }, TRAIL_SAMPLE_INTERVAL);
   }
 
-  viewer.scene.preUpdate.addEventListener(deadReckon);
+  function stopTrailSampling() {
+    if (trailInterval) {
+      clearInterval(trailInterval);
+      trailInterval = null;
+    }
+  }
 
   // ═══════════════════════════════════════════
   //  Feed status
@@ -516,13 +575,14 @@
       airToggle.classList.add("active");
       airRefresh.classList.add("active");
       aircraftHud.classList.add("visible");
-      lastFrameTime = performance.now();
+      startTrailSampling();
       console.log("ARGUS-AIR: Tracking ACTIVE (manual refresh mode)");
     } else {
       airToggle.classList.remove("active");
       airRefresh.classList.remove("active");
       aircraftHud.classList.remove("visible");
       panel.classList.add("hidden");
+      stopTrailSampling();
       clearAllAircraft();
       console.log("ARGUS-AIR: Tracking DISABLED");
     }
@@ -531,29 +591,64 @@
   airToggle.addEventListener("click", toggleTracking);
 
   // ═══════════════════════════════════════════
-  //  Refresh button → manual fetch
+  //  Refresh button → Smart Sync
   // ═══════════════════════════════════════════
 
   airRefresh.addEventListener("click", () => {
-    if (!isActive) return;
-    fetchAircraft();
+    let didSync = false;
+
+    if (isActive) {
+      fetchAircraft();
+      didSync = true;
+    }
+
+    if (typeof window._argusSatSync === "function") {
+      const satSynced = window._argusSatSync();
+      if (satSynced) didSync = true;
+    }
+
+    if (typeof window._argusSeaSync === "function") {
+      const seaSynced = window._argusSeaSync();
+      if (seaSynced) didSync = true;
+    }
+
+    if (typeof window._argusHazSync === "function") {
+      const hazSynced = window._argusHazSync();
+      if (hazSynced) didSync = true;
+    }
+
+    if (!didSync) return;
   });
 
   // ═══════════════════════════════════════════
   //  Click → Intel Panel
   // ═══════════════════════════════════════════
 
-  const handler = new Cesium.ScreenSpaceEventHandler(viewer.scene.canvas);
+  const clickHandler = new Cesium.ScreenSpaceEventHandler(viewer.scene.canvas);
 
-  handler.setInputAction(function (click) {
+  clickHandler.setInputAction(function (click) {
     if (!isActive) return;
 
     const picked = viewer.scene.pick(click.position);
 
+    // Skip satellite entities
+    if (Cesium.defined(picked) && picked.id && picked.id._isSatellite) return;
+
     if (Cesium.defined(picked) && picked.id && picked.id._flightId) {
+      // Prevent camera from tracking the entity
+      viewer.trackedEntity = undefined;
+
       const id = picked.id._flightId;
       const f = aircraftRaw.get(id);
       if (!f) return;
+
+      // Reset panel to aircraft mode
+      panel.classList.remove("sat-mode");
+      document.getElementById("panel-title").textContent = "AIRCRAFT INTEL";
+      document.getElementById("panel-route").style.display = "";
+      document.getElementById("panel-body").style.display = "";
+      const satBody = document.getElementById("panel-body-sat");
+      if (satBody) satBody.style.display = "none";
 
       const callsign = (f.callsign || f.flight || "").trim() || "---";
       const country  = f.orig_country || f.origin_country || f.country || "---";
@@ -571,7 +666,6 @@
       }
       if (!operator) operator = "PRIVATE / CLASSIFIED";
 
-      // Resolve full airport names
       const origName = lookupAirport(origIata);
       const destName = lookupAirport(destIata);
       const codesLine = `${origIata || "N/A"}-${destIata || "N/A"}`;
@@ -601,5 +695,5 @@
 
   panelClose.addEventListener("click", () => panel.classList.add("hidden"));
 
-  console.log("ARGUS-AIR: Module v6 loaded (airport DB, route lines, smart sync).");
+  console.log("ARGUS-AIR: Module v7 loaded (CallbackProperty positions, smart sync).");
 })();
