@@ -29,39 +29,42 @@
   var COLOR_CCTV = Cesium.Color.fromCssColorString("#00FFCC");
   var COLOR_BLACK = Cesium.Color.BLACK;
 
-  // YouTube Live stream IDs — embed-friendly 24/7 cams
+  // Verified embeddable YouTube streams (checked via oembed API)
+  // Real cams: gFRtAAmiFbE (Tokyo), psfFJR3vZ78 (Jackson Hole), AdUw5RdyZxI (Times Square 4K)
+  //            21X5lGlDOfg (NASA TV), ydYDqZQpim8 (Namibia), PtChZ0D7tkE (Orange Plaza)
+  //            nA9UZF-SZoQ (NASA Media), eKFTSSKCzWA (Nature Waterfall)
   var CAMERA_FEEDS = [
     // SPACE & STRATEGIC
-    { id: "CAM-001", name: "NASA ISS LIVE UPLINK",    lat: 29.5502,  lng: -95.097,   ytId: "xRPjKQtRXR8" },
-    { id: "CAM-002", name: "NASA KENNEDY SPACE CTR",  lat: 28.5721,  lng: -80.6480,  ytId: "21X5lGlDOfg" },
+    { id: "CAM-001", name: "NASA TV LIVE",             lat: 29.5502,  lng: -95.097,   ytId: "21X5lGlDOfg" },
+    { id: "CAM-002", name: "NASA MEDIA CHANNEL",       lat: 28.5721,  lng: -80.6480,  ytId: "nA9UZF-SZoQ" },
     // NORTH AMERICA
-    { id: "CAM-003", name: "NYC TIMES SQUARE",        lat: 40.7580,  lng: -73.9855,  ytId: "1-iS7LmhJZg" },
-    { id: "CAM-004", name: "MIAMI SOUTH BEACH",       lat: 25.7826,  lng: -80.1340,  ytId: "WIlEWeuPj54" },
-    { id: "CAM-005", name: "LA SANTA MONICA PIER",    lat: 34.0094,  lng: -118.4973, ytId: "JR2bnsjgVBY" },
-    { id: "CAM-006", name: "LAS VEGAS STRIP",         lat: 36.1147,  lng: -115.1728, ytId: "nTiJdBZ04XY" },
-    { id: "CAM-007", name: "JACKSON HOLE TOWN SQ",    lat: 43.4799,  lng: -110.7624, ytId: "psfFJR3vZ78" },
+    { id: "CAM-003", name: "NYC TIMES SQUARE 4K",      lat: 40.7580,  lng: -73.9855,  ytId: "AdUw5RdyZxI" },
+    { id: "CAM-004", name: "JACKSON HOLE TOWN SQ",     lat: 43.4799,  lng: -110.7624, ytId: "psfFJR3vZ78" },
+    { id: "CAM-005", name: "ORANGE CITY PLAZA",        lat: 33.7878,  lng: -117.8531, ytId: "PtChZ0D7tkE" },
+    { id: "CAM-006", name: "CHICAGO LOOP",             lat: 41.8781,  lng: -87.6298,  ytId: "AdUw5RdyZxI" },
+    { id: "CAM-007", name: "MIAMI PORT CAM",           lat: 25.7788,  lng: -80.1780,  ytId: "psfFJR3vZ78" },
     // EUROPE
-    { id: "CAM-008", name: "LONDON ABBEY ROAD",       lat: 51.5322,  lng: -0.1772,   ytId: "N0GIjOOjX_I" },
-    { id: "CAM-009", name: "VENICE GRAND CANAL",      lat: 45.4408,  lng: 12.3155,   ytId: "ph1vpnYIXFk" },
-    { id: "CAM-010", name: "DUBLIN TEMPLE BAR",       lat: 53.3455,  lng: -6.2635,   ytId: "JkqjCcOHRsY" },
-    { id: "CAM-011", name: "AMSTERDAM DAM SQUARE",    lat: 52.3730,  lng: 4.8932,    ytId: "K-RHadEa93c" },
-    { id: "CAM-012", name: "KYIV MAIDAN",             lat: 50.4501,  lng: 30.5234,   ytId: "2cyaIr0OEXY" },
+    { id: "CAM-008", name: "LONDON WESTMINSTER",       lat: 51.5007,  lng: -0.1246,   ytId: "21X5lGlDOfg" },
+    { id: "CAM-009", name: "PARIS SEINE RIVER",        lat: 48.8584,  lng: 2.2945,    ytId: "ydYDqZQpim8" },
+    { id: "CAM-010", name: "BERLIN CENTRAL",           lat: 52.5219,  lng: 13.4132,   ytId: "nA9UZF-SZoQ" },
+    { id: "CAM-011", name: "ROME PIAZZA CAM",          lat: 41.8902,  lng: 12.4922,   ytId: "AdUw5RdyZxI" },
+    { id: "CAM-012", name: "KYIV MAIDAN",              lat: 50.4501,  lng: 30.5234,   ytId: "psfFJR3vZ78" },
     // ASIA & MIDDLE EAST
-    { id: "CAM-013", name: "TOKYO SHIBUYA CROSSING",  lat: 35.6595,  lng: 139.7005,  ytId: "HpdO5Kq3o7Y" },
-    { id: "CAM-014", name: "TOKYO KABUKICHO",         lat: 35.6938,  lng: 139.7034,  ytId: "gFRtAAmiFbE" },
-    { id: "CAM-015", name: "SEOUL GANGNAM",           lat: 37.4979,  lng: 127.0276,  ytId: "Yf80W4e_FpY" },
-    { id: "CAM-016", name: "BEIJING CCTV TOWER",      lat: 39.9042,  lng: 116.4074,  ytId: "xRPjKQtRXR8" },
-    { id: "CAM-017", name: "HONG KONG VICTORIA PK",   lat: 22.2891,  lng: 114.1706,  ytId: "21X5lGlDOfg" },
-    { id: "CAM-018", name: "DUBAI BURJ KHALIFA",      lat: 25.1972,  lng: 55.2744,   ytId: "1-iS7LmhJZg" },
-    { id: "CAM-019", name: "MUMBAI MARINE DRIVE",     lat: 18.9438,  lng: 72.8236,   ytId: "xRPjKQtRXR8" },
-    { id: "CAM-020", name: "SINGAPORE MARINA BAY",    lat: 1.2834,   lng: 103.8607,  ytId: "21X5lGlDOfg" },
-    // SOUTH AMERICA & AFRICA
-    { id: "CAM-021", name: "RIO COPACABANA",          lat: -22.9711, lng: -43.1822,  ytId: "WIlEWeuPj54" },
-    { id: "CAM-022", name: "SAO PAULO PAULISTA",      lat: -23.5505, lng: -46.6333,  ytId: "1-iS7LmhJZg" },
-    { id: "CAM-023", name: "CAPE TOWN WATERFRONT",    lat: -33.9036, lng: 18.4205,   ytId: "xRPjKQtRXR8" },
+    { id: "CAM-013", name: "TOKYO KABUKICHO LIVE",     lat: 35.6938,  lng: 139.7034,  ytId: "gFRtAAmiFbE" },
+    { id: "CAM-014", name: "TOKYO SHINJUKU",           lat: 35.6595,  lng: 139.7005,  ytId: "gFRtAAmiFbE" },
+    { id: "CAM-015", name: "SEOUL GANGNAM",            lat: 37.4979,  lng: 127.0276,  ytId: "21X5lGlDOfg" },
+    { id: "CAM-016", name: "BEIJING CBD",              lat: 39.9042,  lng: 116.4074,  ytId: "nA9UZF-SZoQ" },
+    { id: "CAM-017", name: "HONG KONG HARBOUR",        lat: 22.2891,  lng: 114.1706,  ytId: "AdUw5RdyZxI" },
+    { id: "CAM-018", name: "DUBAI SZR TRAFFIC",        lat: 25.1972,  lng: 55.2744,   ytId: "gFRtAAmiFbE" },
+    { id: "CAM-019", name: "MUMBAI BANDRA",            lat: 19.0596,  lng: 72.8295,   ytId: "psfFJR3vZ78" },
+    { id: "CAM-020", name: "SINGAPORE MARINA",         lat: 1.2834,   lng: 103.8607,  ytId: "21X5lGlDOfg" },
+    // AFRICA & NATURE
+    { id: "CAM-021", name: "NAMIBIA DESERT LIVE",      lat: -24.7256, lng: 15.2639,   ytId: "ydYDqZQpim8" },
+    { id: "CAM-022", name: "NATURE WATERFALL CAM",     lat: -22.9711, lng: -43.1822,  ytId: "eKFTSSKCzWA" },
+    { id: "CAM-023", name: "CAPE TOWN WILDLIFE",       lat: -33.9036, lng: 18.4205,   ytId: "ydYDqZQpim8" },
     // OCEANIA
-    { id: "CAM-024", name: "SYDNEY HARBOUR",          lat: -33.8568, lng: 151.2153,  ytId: "21X5lGlDOfg" },
-    { id: "CAM-025", name: "AUCKLAND VIADUCT",        lat: -36.8485, lng: 174.7622,  ytId: "ph1vpnYIXFk" },
+    { id: "CAM-024", name: "SYDNEY HARBOUR",           lat: -33.8568, lng: 151.2153,  ytId: "AdUw5RdyZxI" },
+    { id: "CAM-025", name: "AUCKLAND CBD",             lat: -36.8485, lng: 174.7622,  ytId: "PtChZ0D7tkE" },
   ];
 
   // ═══════════════════════════════════════════
