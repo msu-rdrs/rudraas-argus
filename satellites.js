@@ -158,14 +158,14 @@
           }, false),
           point: {
             pixelSize: 5,
-            color: Cesium.Color.fromCssColorString("#FF8800"),
-            outlineColor: Cesium.Color.fromCssColorString("rgba(255, 136, 0, 0.5)"),
+            color: Cesium.Color.fromCssColorString("#8AB4E0"),
+            outlineColor: Cesium.Color.fromCssColorString("rgba(138, 180, 224, 0.5)"),
             outlineWidth: 2,
           },
           label: {
             text: sat.name,
-            font: "10px Roboto Mono",
-            fillColor: Cesium.Color.fromCssColorString("#FF8800"),
+            font: "10px 'JetBrains Mono', monospace",
+            fillColor: Cesium.Color.fromCssColorString("#8AB4E0"),
             outlineColor: Cesium.Color.BLACK,
             outlineWidth: 2,
             style: Cesium.LabelStyle.FILL_AND_OUTLINE,
@@ -190,7 +190,7 @@
     }
 
     console.log("ARGUS-SAT: Tracking", satEntities.length, "satellites");
-    satHud.textContent = `SATELLITES TRACKED: ${satEntities.length}`;
+    satHud.textContent = satEntities.length.toLocaleString("en-US");
     satHud.classList.add("visible");
   }
 
@@ -280,9 +280,9 @@
         show: true,
         semiMajorAxis: new Cesium.CallbackProperty(safeFootprintRadius, false),
         semiMinorAxis: new Cesium.CallbackProperty(safeFootprintRadius, false),
-        material: Cesium.Color.fromCssColorString("#FF8800").withAlpha(0.2),
+        material: Cesium.Color.fromCssColorString("#8AB4E0").withAlpha(0.2),
         outline: true,
-        outlineColor: Cesium.Color.fromCssColorString("#FF8800").withAlpha(0.8),
+        outlineColor: Cesium.Color.fromCssColorString("#8AB4E0").withAlpha(0.8),
         outlineWidth: 2.0,
         height: 0,
         granularity: Cesium.Math.toRadians(1),
@@ -320,7 +320,7 @@
         positions: positions,
         width: 1.5,
         material: new Cesium.PolylineDashMaterialProperty({
-          color: Cesium.Color.fromCssColorString("#FF8800").withAlpha(0.8),
+          color: Cesium.Color.fromCssColorString("#8AB4E0").withAlpha(0.8),
           dashLength: 12,
         }),
         clampToGround: false,
@@ -348,7 +348,7 @@
     viewer.trackedEntity = undefined;
 
     panel.classList.add("sat-mode");
-    panelTitle.textContent = "SATELLITE INTEL";
+    panelTitle.textContent = "Satellite";
     panelRoute.style.display = "none";
     panelBodyAir.style.display = "none";
     panelBodySat.style.display = "block";
@@ -382,7 +382,7 @@
     clearSelectionOverlays();
     selectedSat = null;
     panel.classList.remove("sat-mode");
-    panelTitle.textContent = "AIRCRAFT INTEL";
+    panelTitle.textContent = "Aircraft";
     panelRoute.style.display = "";
     panelBodyAir.style.display = "";
     panelBodySat.style.display = "none";
@@ -402,7 +402,7 @@
     satEntities = [];
 
     satHud.classList.remove("visible");
-    satHud.textContent = "SATELLITES TRACKED: 0";
+    satHud.textContent = "0";
   }
 
   // ── Hover labels ──

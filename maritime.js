@@ -76,10 +76,10 @@
   }
 
   // Color-coded icons — Unified 4-color threat palette
-  const ICON_MILITARY  = makeShipIcon("#FF0000");           // Vivid Red — Threat
-  const ICON_CARGO     = makeShipIcon("#FFFF00");           // Vivid Yellow — Civilian
+  const ICON_MILITARY  = makeShipIcon("#E5484D");           // Vivid Red — Threat
+  const ICON_CARGO     = makeShipIcon("#F2C14E");           // Vivid Yellow — Civilian
   const ICON_TANKER    = makeShipIcon("#000000", true);     // Pure Black + white outline — HVT
-  const ICON_PASSENGER = makeShipIcon("#FFFF00");           // Vivid Yellow — Civilian
+  const ICON_PASSENGER = makeShipIcon("#F2C14E");           // Vivid Yellow — Civilian
 
   function getIconForCategory(cat) {
     if (cat === "military")  return ICON_MILITARY;
@@ -90,11 +90,11 @@
   }
 
   function getLabelColorForCategory(cat) {
-    if (cat === "military")  return Cesium.Color.fromCssColorString("#FF0000");
-    if (cat === "cargo")     return Cesium.Color.fromCssColorString("#FFFF00");
+    if (cat === "military")  return Cesium.Color.fromCssColorString("#E5484D");
+    if (cat === "cargo")     return Cesium.Color.fromCssColorString("#F2C14E");
     if (cat === "tanker")    return Cesium.Color.WHITE;
-    if (cat === "passenger") return Cesium.Color.fromCssColorString("#FFFF00");
-    return Cesium.Color.fromCssColorString("#FFFF00");
+    if (cat === "passenger") return Cesium.Color.fromCssColorString("#F2C14E");
+    return Cesium.Color.fromCssColorString("#F2C14E");
   }
 
   // ═══════════════════════════════════════════
@@ -235,7 +235,7 @@
           },
           label: {
             text: v.name,
-            font: "10px Roboto Mono",
+            font: "10px 'JetBrains Mono', monospace",
             fillColor: labelClr,
             outlineColor: Cesium.Color.BLACK,
             outlineWidth: 2,
@@ -268,7 +268,7 @@
     }
 
     console.log("ARGUS-SEA: Tracking", vesselEntities.length, "vessels");
-    maritimeHud.textContent = "MARITIME TRACKED: " + vesselEntities.length;
+    maritimeHud.textContent = vesselEntities.length.toLocaleString("en-US");
     maritimeHud.classList.add("visible");
   }
 
@@ -317,7 +317,7 @@
 
     panel.classList.remove("sat-mode");
     panel.classList.add("sea-mode");
-    panelTitle.textContent = "MARITIME INTEL";
+    panelTitle.textContent = "Vessel";
     panelRoute.style.display = "none";
     panelBodyAir.style.display = "none";
     panelBodySat.style.display = "none";
@@ -341,7 +341,7 @@
   function resetPanelFromSea() {
     selectedVessel = null;
     panel.classList.remove("sea-mode");
-    panelTitle.textContent = "AIRCRAFT INTEL";
+    panelTitle.textContent = "Aircraft";
     panelRoute.style.display = "";
     panelBodyAir.style.display = "";
     panelBodySat.style.display = "none";
@@ -365,7 +365,7 @@
     vesselEntities = [];
 
     maritimeHud.classList.remove("visible");
-    maritimeHud.textContent = "VESSELS TRACKED: 0";
+    maritimeHud.textContent = "0";
   }
 
   // ═══════════════════════════════════════════

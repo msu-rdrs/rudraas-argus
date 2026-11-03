@@ -121,7 +121,7 @@
         if (isMajor) {
           entityConfig.label = {
             text: "M " + mag.toFixed(1),
-            font: '11px "Roboto Mono", monospace',
+            font: '11px "JetBrains Mono", monospace',
             fillColor: COLOR_HAZ_LABEL,
             outlineColor: COLOR_BLACK,
             outlineWidth: 3,
@@ -157,7 +157,7 @@
     viewer.entities.resumeEvents();
 
     console.log("ARGUS-HAZ: Tracking", hazEntities.length, "seismic events");
-    hazHud.textContent = "HAZARDS TRACKED: " + hazEntities.length;
+    hazHud.textContent = hazEntities.length.toLocaleString("en-US");
     hazHud.classList.add("visible");
   }
 
@@ -168,7 +168,7 @@
   function resetPanelFromHaz() {
     selectedHaz = null;
     panel.classList.remove("haz-mode");
-    panelTitle.textContent = "AIRCRAFT INTEL";
+    panelTitle.textContent = "Aircraft";
     panelRoute.style.display = "";
     panelBodyAir.style.display = "";
     panelBodySat.style.display = "none";
@@ -194,7 +194,7 @@
     hazEntities = [];
 
     hazHud.classList.remove("visible");
-    hazHud.textContent = "HAZARDS TRACKED: 0";
+    hazHud.textContent = "0";
   }
 
   // ═══════════════════════════════════════════
@@ -235,7 +235,7 @@
         viewer.trackedEntity = undefined;
         panel.classList.remove("sat-mode", "sea-mode");
         panel.classList.add("haz-mode");
-        panelTitle.textContent = "SEISMIC INTEL";
+        panelTitle.textContent = "Earthquake";
         panelRoute.style.display = "none";
         panelBodyAir.style.display = "none";
         panelBodySat.style.display = "none";

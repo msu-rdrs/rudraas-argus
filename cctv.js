@@ -26,7 +26,7 @@
   var selectedCctv = null;
   var timestampTimer = null;
 
-  var COLOR_CCTV = Cesium.Color.fromCssColorString("#00FFCC");
+  var COLOR_CCTV = Cesium.Color.fromCssColorString("#5FD3B0");
   var COLOR_BLACK = Cesium.Color.BLACK;
 
   // All feeds are REAL live webcams — verified embeddable via oEmbed API
@@ -94,7 +94,7 @@
         },
         label: {
           text: feed.name,
-          font: '11px "Roboto Mono", monospace',
+          font: '11px "JetBrains Mono", monospace',
           fillColor: COLOR_CCTV,
           outlineColor: COLOR_BLACK,
           outlineWidth: 3,
@@ -111,7 +111,7 @@
     }
 
     viewer.entities.resumeEvents();
-    cctvHud.textContent = "CAMERAS ONLINE: " + cctvEntities.length;
+    cctvHud.textContent = cctvEntities.length.toLocaleString("en-US");
     cctvHud.classList.add("visible");
     console.log("ARGUS-CCTV: Deployed", cctvEntities.length, "surveillance feeds");
   }
@@ -126,7 +126,7 @@
 
     panel.classList.remove("sat-mode", "sea-mode", "haz-mode");
     panel.classList.add("cctv-mode");
-    panelTitle.textContent = "SURVEILLANCE INTEL";
+    panelTitle.textContent = "Live camera";
     panelRoute.style.display = "none";
     panelBodyAir.style.display = "none";
     panelBodySat.style.display = "none";
@@ -135,12 +135,9 @@
     panelBodyCctv.style.display = "block";
 
     cctvLocEl.textContent = data.name;
-    cctvLocEl.style.color = "#00FFCC";
-    cctvStatusEl.textContent = "LIVE UPLINK";
-    cctvStatusEl.style.color = "#00FFCC";
+    cctvStatusEl.textContent = "Live uplink";
     cctvCamId.textContent = data.id;
     cctvSignal.textContent = "LIVE";
-    cctvSignal.style.color = "#00FF00";
 
     var latStr = Math.abs(data.lat).toFixed(4) + (data.lat >= 0 ? "\u00B0 N" : "\u00B0 S");
     var lngStr = Math.abs(data.lng).toFixed(4) + (data.lng >= 0 ? "\u00B0 E" : "\u00B0 W");
@@ -170,7 +167,7 @@
     cctvFrame.src = "";
     if (timestampTimer) { clearInterval(timestampTimer); timestampTimer = null; }
     panel.classList.remove("cctv-mode");
-    panelTitle.textContent = "AIRCRAFT INTEL";
+    panelTitle.textContent = "Aircraft";
     panelRoute.style.display = "";
     panelBodyAir.style.display = "";
     panelBodySat.style.display = "none";
@@ -195,7 +192,7 @@
     viewer.entities.resumeEvents();
     cctvEntities = [];
     cctvHud.classList.remove("visible");
-    cctvHud.textContent = "CAMERAS ONLINE: 0";
+    cctvHud.textContent = "0";
   }
 
   // ═══════════════════════════════════════════

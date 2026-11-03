@@ -3,12 +3,14 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>RUDRAAS ARGUS</title>
+  <title>Argus — Rudraas Dynamics</title>
+  <meta name="theme-color" content="#141413" />
+  <link rel="icon" type="image/png" href="./Rudraas Dynamics_EMBLEM.png" />
 
-  <!-- Google Fonts -->
+  <!-- Fonts: Inter (UI), JetBrains Mono (data), Lora (brand display) -->
   <link rel="preconnect" href="https://fonts.googleapis.com" />
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
-  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&family=Rajdhani:wght@400;500;600;700&family=Roboto+Mono:wght@300;400;500&display=swap" rel="stylesheet" />
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500;600&family=Lora:ital,wght@0,500;0,600;1,500&display=swap" rel="stylesheet" />
 
   <!-- Satellite.js for orbital mechanics -->
   <script src="https://cdnjs.cloudflare.com/ajax/libs/satellite.js/4.1.3/satellite.min.js"></script>
@@ -22,164 +24,203 @@
 </head>
 <body>
 
-  <!-- Boot Screen -->
-  <div id="boot-screen">
+  <!-- ═══════════ Boot Screen ═══════════ -->
+  <div id="boot-screen" title="Click to skip">
     <div id="boot-content">
-      <img id="boot-emblem" src="./Rudraas Dynamics_EMBLEM.png" alt="Rudraas Dynamics Emblem" />
-      <h1 id="boot-argus-title">ARGUS</h1>
-      <div id="boot-subtitle">INTELLIGENCE PLATFORM</div>
-      <div id="boot-terminal"></div>
+      <img id="boot-emblem" src="./Rudraas Dynamics_EMBLEM.png" alt="Rudraas Dynamics emblem" />
+      <h1 id="boot-argus-title">Argus</h1>
+      <div id="boot-subtitle">Geospatial Intelligence Platform</div>
+      <div id="boot-progress"><div id="boot-progress-bar"></div></div>
+      <ul id="boot-terminal" aria-live="polite"></ul>
+      <div id="boot-footer">Rudraas Dynamics</div>
     </div>
   </div>
 
-  <!-- Cesium 3D Globe -->
+  <!-- ═══════════ Cesium 3D Globe ═══════════ -->
   <div id="cesiumContainer"></div>
 
-  <!-- Top Bar -->
-  <div id="top-bar">
+  <!-- ═══════════ Top Bar ═══════════ -->
+  <header id="top-bar">
     <div id="top-bar-left">
-      <div class="brand-plate">
-        <img id="app-logo" src="./Rudraas Dynamics_LOGO.png" alt="Rudraas Dynamics" />
-        <span id="app-title">ARGUS</span>
+      <div class="brand">
+        <img id="app-logo" src="./Rudraas Dynamics_EMBLEM.png" alt="Rudraas Dynamics" />
+        <div class="brand-text">
+          <span id="app-title">Argus</span>
+          <span class="brand-sub">Rudraas Dynamics</span>
+        </div>
       </div>
     </div>
+
     <div id="top-bar-center">
-      <input id="search-bar" type="text" placeholder="SEARCH TARGET LOCATION..." autocomplete="off" />
-      <div id="search-dropdown" class="hidden"></div>
-      <button id="air-toggle" title="Toggle Aircraft Tracking">
-        <svg width="16" height="16" viewBox="0 0 24 24" fill="currentColor"><path d="M21 16v-2l-8-5V3.5A1.5 1.5 0 0 0 11.5 2 1.5 1.5 0 0 0 10 3.5V9l-8 5v2l8-2.5V19l-2 1.5V22l3.5-1 3.5 1v-1.5L13 19v-5.5l8 2.5z"/></svg>
-        <span>AIR</span>
-      </button>
-      <button id="sat-toggle" title="Toggle Satellite Tracking">
-        <svg width="16" height="16" viewBox="0 0 24 24" fill="currentColor"><path d="M12 2a1 1 0 0 1 1 1v2a1 1 0 1 1-2 0V3a1 1 0 0 1 1-1zm0 16a1 1 0 0 1 1 1v2a1 1 0 1 1-2 0v-2a1 1 0 0 1 1-1zm10-6a1 1 0 0 1-1 1h-2a1 1 0 1 1 0-2h2a1 1 0 0 1 1 1zM5 12a1 1 0 0 1-1 1H2a1 1 0 1 1 0-2h2a1 1 0 0 1 1 1zm12.07-5.07a1 1 0 0 1 0 1.41l-1.41 1.42a1 1 0 1 1-1.42-1.42l1.42-1.41a1 1 0 0 1 1.41 0zM9.76 14.24a1 1 0 0 1 0 1.42l-1.42 1.41a1 1 0 1 1-1.41-1.41l1.41-1.42a1 1 0 0 1 1.42 0zm5.66 0a1 1 0 0 1 1.41 0l1.42 1.42a1 1 0 1 1-1.42 1.41l-1.41-1.41a1 1 0 0 1 0-1.42zM8.34 6.93a1 1 0 0 1 1.42 0 1 1 0 0 1 0 1.41L8.34 9.76a1 1 0 0 1-1.41-1.42l1.41-1.41zM12 8a4 4 0 1 1 0 8 4 4 0 0 1 0-8z"/></svg>
-        <span>SAT</span>
-      </button>
-      <button id="sea-toggle" title="Toggle Maritime Tracking">
-        <svg width="16" height="16" viewBox="0 0 24 24" fill="currentColor"><path d="M3 17h1.5l1-1.5 1 1.5h2l1-1.5 1 1.5h2l1-1.5 1 1.5h2l1-1.5 1 1.5H21v2H3v-2zm0-4h1.5l1-1.5 1 1.5h2l1-1.5 1 1.5h2l1-1.5 1 1.5h2l1-1.5 1 1.5H21v2H3v-2zM6 5l6 3.5L18 5v3l-6 3.5L6 8V5z"/></svg>
-        <span>SEA</span>
-      </button>
-      <button id="haz-toggle" title="Toggle Global Hazards">
-        <svg width="16" height="16" viewBox="0 0 24 24" fill="currentColor"><path d="M12 2L1 21h22L12 2zm0 3.99L19.53 19H4.47L12 5.99zM11 16h2v2h-2zm0-6h2v5h-2z"/></svg>
-        <span>HAZ</span>
-      </button>
-      <button id="cctv-toggle" title="Toggle Surveillance Cameras">
-        <svg width="16" height="16" viewBox="0 0 24 24" fill="currentColor"><path d="M17 10.5V7c0-.55-.45-1-1-1H4c-.55 0-1 .45-1 1v10c0 .55.45 1 1 1h12c.55 0 1-.45 1-1v-3.5l4 4v-11l-4 4z"/></svg>
-        <span>CCTV</span>
-      </button>
-      <button id="air-refresh" title="Refresh Aircraft Data">
-        <svg id="refresh-icon" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M21 2v6h-6"/><path d="M3 12a9 9 0 0 1 15-6.7L21 8"/><path d="M3 22v-6h6"/><path d="M21 12a9 9 0 0 1-15 6.7L3 16"/></svg>
-      </button>
+      <div class="search">
+        <svg class="search-icon" width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="11" cy="11" r="7"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg>
+        <input id="search-bar" type="text" placeholder="Search a place, city or airport code (e.g. DEL)" autocomplete="off" spellcheck="false" aria-label="Search location" />
+        <kbd class="search-kbd">/</kbd>
+        <div id="search-dropdown" class="hidden" role="listbox"></div>
+      </div>
     </div>
+
     <div id="top-bar-right">
-      <div id="utc-label">UTC</div>
-      <div id="utc-clock">00:00:00</div>
+      <div class="live-pill" title="Platform online">
+        <span class="live-dot"></span>
+        <span>Live</span>
+      </div>
+      <div class="clock" title="Coordinated Universal Time">
+        <span id="utc-label">UTC</span>
+        <span id="utc-clock">00:00:00</span>
+      </div>
+      <button id="help-btn" class="icon-btn" title="Keyboard shortcuts (?)" aria-label="Keyboard shortcuts">
+        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><path d="M9.1 9a3 3 0 0 1 5.8 1c0 2-3 3-3 3"/><line x1="12" y1="17" x2="12.01" y2="17"/></svg>
+      </button>
     </div>
-  </div>
+  </header>
 
-  <!-- Classification Strip -->
-  <div id="classification-strip">
-    <span>SYSTEM ACTIVE &nbsp;&bull;&nbsp; UNCLASSIFIED</span>
-  </div>
-
-  <!-- Camera Coordinates -->
-  <div id="camera-coords">
-    LAT: ---.----&deg; &nbsp; LNG: ---.----&deg; &nbsp; ALT: ------m
-  </div>
-
-  <!-- Aircraft Count HUD -->
-  <div id="aircraft-hud">AIRCRAFT TRACKED: 0</div>
-
-  <!-- Satellite Count HUD -->
-  <div id="satellite-hud">SATELLITES TRACKED: 0</div>
-
-  <!-- Maritime Count HUD -->
-  <div id="maritime-hud">VESSELS TRACKED: 0</div>
-
-  <!-- Hazards Count HUD -->
-  <div id="hazards-hud">HAZARDS TRACKED: 0</div>
-
-  <!-- CCTV Count HUD -->
-  <div id="cctv-hud">CAMERAS ONLINE: 0</div>
-
-  <!-- Geo Tooltip (country hover) -->
-  <div id="geo-tooltip"></div>
-
-  <!-- Tactical Navigation HUD -->
-  <div id="nav-controls">
-    <button id="nav-north" title="Reset North">
-      <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polygon points="3 22 12 2 21 22 12 17"/></svg>
-    </button>
-    <button id="nav-home" title="Home View">
-      <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 9l9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"/><polyline points="9 22 9 12 15 12 15 22"/></svg>
-    </button>
-    <button id="nav-tilt" title="Toggle 3D Tilt">3D</button>
-    <button id="nav-zoom-in" title="Zoom In">
-      <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>
-    </button>
-    <div id="zoom-slider-track">
-      <div id="zoom-slider-rail"></div>
-      <div id="zoom-slider-thumb"></div>
+  <!-- ═══════════ Layers Panel (left) ═══════════ -->
+  <aside id="layers-panel" class="panel" aria-label="Data layers">
+    <div class="panel-head">
+      <div class="panel-head-text">
+        <span class="eyebrow">Data layers</span>
+        <span id="layers-summary" class="panel-head-meta">None active</span>
+      </div>
+      <div class="panel-head-actions">
+        <button id="air-refresh" class="icon-btn" title="Sync live feeds (R)" aria-label="Sync live feeds">
+          <svg id="refresh-icon" width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 2v6h-6"/><path d="M3 12a9 9 0 0 1 15-6.7L21 8"/><path d="M3 22v-6h6"/><path d="M21 12a9 9 0 0 1-15 6.7L3 16"/></svg>
+        </button>
+        <button id="layers-collapse" class="icon-btn" title="Collapse panel" aria-label="Collapse layers panel" aria-expanded="true">
+          <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="15 18 9 12 15 6"/></svg>
+        </button>
+      </div>
     </div>
-    <button id="nav-zoom-out" title="Zoom Out">
-      <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round"><line x1="5" y1="12" x2="19" y2="12"/></svg>
-    </button>
-  </div>
 
-  <!-- Universal Intel Panel -->
-  <div id="aircraft-panel" class="hidden">
+    <div class="layer-list">
+      <button id="air-toggle" class="layer-row" data-layer="air" data-key="1" aria-pressed="false" title="Toggle aircraft (1)">
+        <span class="layer-icon"><svg width="16" height="16" viewBox="0 0 24 24" fill="currentColor"><path d="M21 16v-2l-8-5V3.5A1.5 1.5 0 0 0 11.5 2 1.5 1.5 0 0 0 10 3.5V9l-8 5v2l8-2.5V19l-2 1.5V22l3.5-1 3.5 1v-1.5L13 19v-5.5l8 2.5z"/></svg></span>
+        <span class="layer-text">
+          <span class="layer-name">Aircraft</span>
+          <span class="layer-desc">Live flights · ADS-B</span>
+        </span>
+        <span id="aircraft-hud" class="layer-count">—</span>
+        <span class="switch" aria-hidden="true"></span>
+      </button>
+
+      <button id="sat-toggle" class="layer-row" data-layer="sat" data-key="2" aria-pressed="false" title="Toggle satellites (2)">
+        <span class="layer-icon"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M13 7 9 3 5 7l4 4"/><path d="m17 11 4 4-4 4-4-4"/><path d="m8 12 4 4 6-6-4-4Z"/><path d="m16 8 3-3"/><path d="M9 21a6 6 0 0 0-6-6"/></svg></span>
+        <span class="layer-text">
+          <span class="layer-name">Satellites</span>
+          <span class="layer-desc">Orbital objects · TLE</span>
+        </span>
+        <span id="satellite-hud" class="layer-count">—</span>
+        <span class="switch" aria-hidden="true"></span>
+      </button>
+
+      <button id="sea-toggle" class="layer-row" data-layer="sea" data-key="3" aria-pressed="false" title="Toggle maritime (3)">
+        <span class="layer-icon"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M2 21c.6.5 1.2 1 2.5 1 2.5 0 2.5-2 5-2 1.3 0 1.9.5 2.5 1 .6.5 1.2 1 2.5 1 2.5 0 2.5-2 5-2 1.3 0 1.9.5 2.5 1"/><path d="M19.38 20A11.6 11.6 0 0 0 21 14l-9-4-9 4c0 2.9.94 5.34 2.81 7.76"/><path d="M19 13V7a2 2 0 0 0-2-2H7a2 2 0 0 0-2 2v6"/><path d="M12 10v4"/><path d="M12 2v3"/></svg></span>
+        <span class="layer-text">
+          <span class="layer-name">Maritime</span>
+          <span class="layer-desc">Vessel positions · AIS</span>
+        </span>
+        <span id="maritime-hud" class="layer-count">—</span>
+        <span class="switch" aria-hidden="true"></span>
+      </button>
+
+      <button id="haz-toggle" class="layer-row" data-layer="haz" data-key="4" aria-pressed="false" title="Toggle hazards (4)">
+        <span class="layer-icon"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M10.29 3.86 1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z"/><line x1="12" y1="9" x2="12" y2="13"/><line x1="12" y1="17" x2="12.01" y2="17"/></svg></span>
+        <span class="layer-text">
+          <span class="layer-name">Hazards</span>
+          <span class="layer-desc">Earthquakes · USGS</span>
+        </span>
+        <span id="hazards-hud" class="layer-count">—</span>
+        <span class="switch" aria-hidden="true"></span>
+      </button>
+
+      <button id="cctv-toggle" class="layer-row" data-layer="cctv" data-key="5" aria-pressed="false" title="Toggle cameras (5)">
+        <span class="layer-icon"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polygon points="23 7 16 12 23 17 23 7"/><rect x="1" y="5" width="15" height="14" rx="2" ry="2"/></svg></span>
+        <span class="layer-text">
+          <span class="layer-name">Cameras</span>
+          <span class="layer-desc">Public live webcams</span>
+        </span>
+        <span id="cctv-hud" class="layer-count">—</span>
+        <span class="switch" aria-hidden="true"></span>
+      </button>
+    </div>
+
+    <div class="panel-foot">
+      <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="12" r="10"/><line x1="12" y1="16" x2="12" y2="12"/><line x1="12" y1="8" x2="12.01" y2="8"/></svg>
+      <span>Turn on a layer, then click any object on the globe to inspect it.</span>
+    </div>
+  </aside>
+
+  <!-- ═══════════ Inspector Panel (right) ═══════════ -->
+  <aside id="aircraft-panel" class="panel hidden" aria-label="Object inspector">
     <div id="panel-header">
-      <span id="panel-title">AIRCRAFT INTEL</span>
-      <button id="panel-close">&times;</button>
+      <div class="panel-heading">
+        <span class="kind-dot" aria-hidden="true"></span>
+        <span id="panel-title">Aircraft</span>
+      </div>
+      <button id="panel-close" class="icon-btn" title="Close (Esc)" aria-label="Close inspector">
+        <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>
+      </button>
     </div>
+
     <div id="panel-route">
+      <span class="eyebrow">Route</span>
       <span id="panel-route-text">--- &rarr; ---</span>
     </div>
-    <!-- Aircraft Intel Body -->
-    <div id="panel-body" class="panel-body-aircraft">
-      <div class="panel-row"><span class="panel-label">CALLSIGN</span><span id="panel-callsign" class="panel-value">---</span></div>
-      <div class="panel-row"><span class="panel-label">OPERATOR</span><span id="panel-operator" class="panel-value">---</span></div>
-      <div class="panel-row"><span class="panel-label">REGISTRATION</span><span id="panel-reg" class="panel-value">---</span></div>
-      <div class="panel-row"><span class="panel-label">AIRCRAFT TYPE</span><span id="panel-type" class="panel-value">---</span></div>
-      <div class="panel-row"><span class="panel-label">COUNTRY</span><span id="panel-country" class="panel-value">---</span></div>
-      <div class="panel-row"><span class="panel-label">ALTITUDE</span><span id="panel-altitude" class="panel-value">---</span></div>
-      <div class="panel-row"><span class="panel-label">SPEED</span><span id="panel-speed" class="panel-value">---</span></div>
-      <div class="panel-row"><span class="panel-label">HEADING</span><span id="panel-heading" class="panel-value">---</span></div>
-      <div class="panel-row"><span class="panel-label">ICAO24</span><span id="panel-icao" class="panel-value">---</span></div>
+
+    <!-- Aircraft -->
+    <div id="panel-body" class="panel-body">
+      <div class="panel-row"><span class="panel-label">Callsign</span><span id="panel-callsign" class="panel-value panel-value-primary">---</span></div>
+      <div class="panel-row"><span class="panel-label">Operator</span><span id="panel-operator" class="panel-value">---</span></div>
+      <div class="panel-row"><span class="panel-label">Registration</span><span id="panel-reg" class="panel-value">---</span></div>
+      <div class="panel-row"><span class="panel-label">Aircraft type</span><span id="panel-type" class="panel-value">---</span></div>
+      <div class="panel-row"><span class="panel-label">Country</span><span id="panel-country" class="panel-value">---</span></div>
+      <div class="panel-section">Kinematics</div>
+      <div class="panel-row"><span class="panel-label">Altitude</span><span id="panel-altitude" class="panel-value">---</span></div>
+      <div class="panel-row"><span class="panel-label">Ground speed</span><span id="panel-speed" class="panel-value">---</span></div>
+      <div class="panel-row"><span class="panel-label">Heading</span><span id="panel-heading" class="panel-value">---</span></div>
+      <div class="panel-row"><span class="panel-label">ICAO 24-bit</span><span id="panel-icao" class="panel-value">---</span></div>
     </div>
-    <!-- Satellite Intel Body -->
-    <div id="panel-body-sat" class="panel-body-satellite" style="display:none;">
-      <div class="panel-row"><span class="panel-label">NAME</span><span id="sat-panel-name" class="panel-value sat-value">---</span></div>
-      <div class="panel-row"><span class="panel-label">NORAD ID</span><span id="sat-panel-norad" class="panel-value sat-value">---</span></div>
-      <div class="panel-row"><span class="panel-label">LAUNCH YEAR</span><span id="sat-panel-launch" class="panel-value sat-value">---</span></div>
-      <div class="panel-row"><span class="panel-label">ALTITUDE</span><span id="sat-panel-alt" class="panel-value sat-value">---</span></div>
-      <div class="panel-row"><span class="panel-label">VELOCITY</span><span id="sat-panel-vel" class="panel-value sat-value">---</span></div>
-      <div class="panel-row"><span class="panel-label">PERIOD</span><span id="sat-panel-period" class="panel-value sat-value">---</span></div>
-      <div class="panel-row"><span class="panel-label">LATITUDE</span><span id="sat-panel-lat" class="panel-value sat-value">---</span></div>
-      <div class="panel-row"><span class="panel-label">LONGITUDE</span><span id="sat-panel-lng" class="panel-value sat-value">---</span></div>
+
+    <!-- Satellite -->
+    <div id="panel-body-sat" class="panel-body" style="display:none;">
+      <div class="panel-row"><span class="panel-label">Name</span><span id="sat-panel-name" class="panel-value panel-value-primary">---</span></div>
+      <div class="panel-row"><span class="panel-label">NORAD ID</span><span id="sat-panel-norad" class="panel-value">---</span></div>
+      <div class="panel-row"><span class="panel-label">Launch year</span><span id="sat-panel-launch" class="panel-value">---</span></div>
+      <div class="panel-section">Orbit</div>
+      <div class="panel-row"><span class="panel-label">Altitude</span><span id="sat-panel-alt" class="panel-value">---</span></div>
+      <div class="panel-row"><span class="panel-label">Velocity</span><span id="sat-panel-vel" class="panel-value">---</span></div>
+      <div class="panel-row"><span class="panel-label">Period</span><span id="sat-panel-period" class="panel-value">---</span></div>
+      <div class="panel-row"><span class="panel-label">Latitude</span><span id="sat-panel-lat" class="panel-value">---</span></div>
+      <div class="panel-row"><span class="panel-label">Longitude</span><span id="sat-panel-lng" class="panel-value">---</span></div>
     </div>
-    <!-- Maritime Intel Body -->
-    <div id="panel-body-sea" class="panel-body-maritime" style="display:none;">
-      <div class="panel-row"><span class="panel-label">VESSEL</span><span id="sea-panel-name" class="panel-value sea-value">---</span></div>
-      <div class="panel-row"><span class="panel-label">CLASS</span><span id="sea-panel-type" class="panel-value sea-value">---</span></div>
-      <div class="panel-row"><span class="panel-label">FLAG</span><span id="sea-panel-flag" class="panel-value sea-value">---</span></div>
-      <div class="panel-row"><span class="panel-label">SPEED</span><span id="sea-panel-speed" class="panel-value sea-value">---</span></div>
-      <div class="panel-row"><span class="panel-label">HEADING</span><span id="sea-panel-heading" class="panel-value sea-value">---</span></div>
-      <div class="panel-row"><span class="panel-label">LATITUDE</span><span id="sea-panel-lat" class="panel-value sea-value">---</span></div>
-      <div class="panel-row"><span class="panel-label">LONGITUDE</span><span id="sea-panel-lng" class="panel-value sea-value">---</span></div>
+
+    <!-- Maritime -->
+    <div id="panel-body-sea" class="panel-body" style="display:none;">
+      <div class="panel-row"><span class="panel-label">Vessel</span><span id="sea-panel-name" class="panel-value panel-value-primary">---</span></div>
+      <div class="panel-row"><span class="panel-label">Class</span><span id="sea-panel-type" class="panel-value">---</span></div>
+      <div class="panel-row"><span class="panel-label">Flag</span><span id="sea-panel-flag" class="panel-value">---</span></div>
+      <div class="panel-section">Kinematics</div>
+      <div class="panel-row"><span class="panel-label">Speed</span><span id="sea-panel-speed" class="panel-value">---</span></div>
+      <div class="panel-row"><span class="panel-label">Heading</span><span id="sea-panel-heading" class="panel-value">---</span></div>
+      <div class="panel-row"><span class="panel-label">Latitude</span><span id="sea-panel-lat" class="panel-value">---</span></div>
+      <div class="panel-row"><span class="panel-label">Longitude</span><span id="sea-panel-lng" class="panel-value">---</span></div>
     </div>
-    <!-- Hazard Intel Body -->
-    <div id="panel-body-haz" class="panel-body-hazards" style="display:none;">
-      <div class="panel-row"><span class="panel-label">LOCATION</span><span id="haz-panel-loc" class="panel-value" style="color:#FF3300;">---</span></div>
-      <div class="panel-row"><span class="panel-label">MAGNITUDE</span><span id="haz-panel-mag" class="panel-value" style="color:#FF3300;">---</span></div>
-      <div class="panel-row"><span class="panel-label">EPICENTER</span><span id="haz-panel-epi" class="panel-value" style="color:#FF3300;">---</span></div>
-      <div class="panel-row"><span class="panel-label">DEPTH</span><span id="haz-panel-depth" class="panel-value" style="color:#FF3300;">---</span></div>
-      <div class="panel-row"><span class="panel-label">IMPACT RADIUS</span><span id="haz-panel-radius" class="panel-value" style="color:#FF3300;">---</span></div>
-      <div class="panel-row"><span class="panel-label">TIME (UTC)</span><span id="haz-panel-time" class="panel-value" style="color:#FF3300;">---</span></div>
+
+    <!-- Hazard -->
+    <div id="panel-body-haz" class="panel-body" style="display:none;">
+      <div class="panel-row"><span class="panel-label">Location</span><span id="haz-panel-loc" class="panel-value panel-value-primary">---</span></div>
+      <div class="panel-row"><span class="panel-label">Magnitude</span><span id="haz-panel-mag" class="panel-value">---</span></div>
+      <div class="panel-row"><span class="panel-label">Time (UTC)</span><span id="haz-panel-time" class="panel-value">---</span></div>
+      <div class="panel-section">Geometry</div>
+      <div class="panel-row"><span class="panel-label">Epicenter</span><span id="haz-panel-epi" class="panel-value">---</span></div>
+      <div class="panel-row"><span class="panel-label">Depth</span><span id="haz-panel-depth" class="panel-value">---</span></div>
+      <div class="panel-row"><span class="panel-label">Impact radius</span><span id="haz-panel-radius" class="panel-value">---</span></div>
     </div>
-    <!-- CCTV Surveillance Body -->
-    <div id="panel-body-cctv" class="panel-body-cctv" style="display:none;">
+
+    <!-- Camera -->
+    <div id="panel-body-cctv" class="panel-body panel-body-cctv" style="display:none;">
       <div id="cctv-viewport">
-        <iframe id="cctv-frame" width="100%" height="180" src="" frameborder="0" allow="autoplay; encrypted-media" allowfullscreen></iframe>
+        <iframe id="cctv-frame" width="100%" height="180" src="" frameborder="0" allow="autoplay; encrypted-media" allowfullscreen title="Live camera feed"></iframe>
         <div id="cctv-overlay">
           <div id="cctv-overlay-top">
             <span id="cctv-cam-id">CAM-001</span>
@@ -192,9 +233,86 @@
         </div>
         <div id="cctv-scanlines"></div>
       </div>
-      <div class="panel-row"><span class="panel-label">FEED</span><span id="cctv-panel-loc" class="panel-value" style="color:#00FFCC;">---</span></div>
-      <div class="panel-row"><span class="panel-label">STATUS</span><span id="cctv-panel-status" class="panel-value" style="color:#00FFCC;">STANDBY</span></div>
-      <div class="panel-row"><span class="panel-label">COORDINATES</span><span id="cctv-panel-coords" class="panel-value" style="color:#00FFCC;">---</span></div>
+      <div class="panel-row"><span class="panel-label">Feed</span><span id="cctv-panel-loc" class="panel-value panel-value-primary">---</span></div>
+      <div class="panel-row"><span class="panel-label">Status</span><span id="cctv-panel-status" class="panel-value">Standby</span></div>
+      <div class="panel-row"><span class="panel-label">Coordinates</span><span id="cctv-panel-coords" class="panel-value">---</span></div>
+    </div>
+  </aside>
+
+  <!-- ═══════════ Map Controls (right) ═══════════ -->
+  <div id="nav-controls" aria-label="Map controls">
+    <div class="nav-group">
+      <button id="nav-north" title="Reset to north (N)" aria-label="Reset to north">
+        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polygon points="12 2 19 21 12 17 5 21 12 2"/></svg>
+      </button>
+      <button id="nav-home" title="Home view (H)" aria-label="Home view">
+        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 9l9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"/><polyline points="9 22 9 12 15 12 15 22"/></svg>
+      </button>
+      <button id="nav-tilt" title="Toggle 3D tilt (T)" aria-label="Toggle 3D tilt">3D</button>
+    </div>
+    <div class="nav-group">
+      <button id="nav-zoom-in" title="Zoom in (+)" aria-label="Zoom in">
+        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>
+      </button>
+      <div id="zoom-slider-track" title="Drag to set altitude">
+        <div id="zoom-slider-rail"></div>
+        <div id="zoom-slider-thumb"></div>
+      </div>
+      <button id="nav-zoom-out" title="Zoom out (−)" aria-label="Zoom out">
+        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><line x1="5" y1="12" x2="19" y2="12"/></svg>
+      </button>
+    </div>
+  </div>
+
+  <!-- ═══════════ Status Bar (bottom) ═══════════ -->
+  <footer id="status-bar">
+    <div class="status-left">
+      <span id="classification-strip" class="classification">Unclassified</span>
+      <span id="camera-coords" class="coords">
+        <span class="k">Lat</span><span class="v">—</span>
+        <span class="k">Lon</span><span class="v">—</span>
+        <span class="k alt">Alt</span><span class="v alt">—</span>
+      </span>
+    </div>
+    <div class="status-right">
+      <span id="status-objects" class="status-item">0 objects tracked</span>
+      <span class="status-sep"></span>
+      <span class="status-item status-sources">Imagery: Esri · Google 3D Tiles · OSM</span>
+    </div>
+  </footer>
+
+  <!-- Country hover tooltip -->
+  <div id="geo-tooltip"></div>
+
+  <!-- ═══════════ Shortcuts Dialog ═══════════ -->
+  <div id="help-overlay" class="hidden" role="dialog" aria-modal="true" aria-labelledby="help-title">
+    <div class="help-card">
+      <div class="help-head">
+        <h2 id="help-title">Keyboard shortcuts</h2>
+        <button id="help-close" class="icon-btn" aria-label="Close">
+          <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>
+        </button>
+      </div>
+      <div class="help-grid">
+        <div class="help-group">
+          <div class="eyebrow">Navigate</div>
+          <div class="help-row"><span>Search location</span><kbd>/</kbd></div>
+          <div class="help-row"><span>Home view</span><kbd>H</kbd></div>
+          <div class="help-row"><span>Reset north</span><kbd>N</kbd></div>
+          <div class="help-row"><span>Toggle 3D tilt</span><kbd>T</kbd></div>
+          <div class="help-row"><span>Zoom in / out</span><span><kbd>+</kbd> <kbd>−</kbd></span></div>
+        </div>
+        <div class="help-group">
+          <div class="eyebrow">Layers</div>
+          <div class="help-row"><span>Aircraft</span><kbd>1</kbd></div>
+          <div class="help-row"><span>Satellites</span><kbd>2</kbd></div>
+          <div class="help-row"><span>Maritime</span><kbd>3</kbd></div>
+          <div class="help-row"><span>Hazards</span><kbd>4</kbd></div>
+          <div class="help-row"><span>Cameras</span><kbd>5</kbd></div>
+          <div class="help-row"><span>Sync live feeds</span><kbd>R</kbd></div>
+        </div>
+      </div>
+      <div class="help-foot">Press <kbd>Esc</kbd> to close panels · <kbd>?</kbd> to show this again</div>
     </div>
   </div>
 
@@ -206,5 +324,6 @@
   <script src="maritime.js"></script>
   <script src="hazards.js"></script>
   <script src="cctv.js"></script>
+  <script src="ui.js"></script>
 </body>
 </html>

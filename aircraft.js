@@ -135,9 +135,9 @@
     return iconCache[fillColor];
   }
 
-  const ICON_COMMERCIAL = makeAircraftIcon("#FFFF00");
-  const ICON_MILITARY   = makeAircraftIcon("#FF0000");
-  const ICON_UNKNOWN    = makeAircraftIcon("#FFFF00");
+  const ICON_COMMERCIAL = makeAircraftIcon("#F2C14E");
+  const ICON_MILITARY   = makeAircraftIcon("#E5484D");
+  const ICON_UNKNOWN    = makeAircraftIcon("#F2C14E");
 
   // ═══════════════════════════════════════════
   //  Classification helpers
@@ -159,21 +159,21 @@
   }
 
   function getLabelColorForType(t) {
-    if (t === "military") return Cesium.Color.fromCssColorString("#FF0000");
-    if (t === "commercial") return Cesium.Color.fromCssColorString("#FFFF00");
-    return Cesium.Color.fromCssColorString("#FFFF00");
+    if (t === "military") return Cesium.Color.fromCssColorString("#E5484D");
+    if (t === "commercial") return Cesium.Color.fromCssColorString("#F2C14E");
+    return Cesium.Color.fromCssColorString("#F2C14E");
   }
 
   function getTrailColorForType(t) {
-    if (t === "military") return Cesium.Color.fromCssColorString("#FF0000").withAlpha(0.7);
-    if (t === "commercial") return Cesium.Color.fromCssColorString("#FFFF00").withAlpha(0.7);
-    return Cesium.Color.fromCssColorString("#FFFF00").withAlpha(0.7);
+    if (t === "military") return Cesium.Color.fromCssColorString("#E5484D").withAlpha(0.7);
+    if (t === "commercial") return Cesium.Color.fromCssColorString("#F2C14E").withAlpha(0.7);
+    return Cesium.Color.fromCssColorString("#F2C14E").withAlpha(0.7);
   }
 
   function getRouteColorForType(t) {
-    if (t === "military") return Cesium.Color.fromCssColorString("#FF0000").withAlpha(0.8);
-    if (t === "commercial") return Cesium.Color.fromCssColorString("#FFFF00").withAlpha(0.8);
-    return Cesium.Color.fromCssColorString("#FFFF00").withAlpha(0.8);
+    if (t === "military") return Cesium.Color.fromCssColorString("#E5484D").withAlpha(0.8);
+    if (t === "commercial") return Cesium.Color.fromCssColorString("#F2C14E").withAlpha(0.8);
+    return Cesium.Color.fromCssColorString("#F2C14E").withAlpha(0.8);
   }
 
   // ═══════════════════════════════════════════
@@ -466,7 +466,7 @@
           },
           label: {
             text: callsign || id,
-            font: "11px 'Roboto Mono', monospace",
+            font: "11px 'JetBrains Mono', monospace",
             fillColor: labelClr,
             outlineColor: Cesium.Color.BLACK,
             outlineWidth: 3,
@@ -504,7 +504,7 @@
       }
     }
 
-    aircraftHud.textContent = `AIRCRAFT TRACKED: ${aircraftState.size}`;
+    aircraftHud.textContent = aircraftState.size.toLocaleString("en-US");
   }
 
   // ═══════════════════════════════════════════
@@ -554,14 +554,12 @@
   // ═══════════════════════════════════════════
 
   function showFeedOffline() {
-    aircraftHud.textContent = "AIR FEED OFFLINE";
-    aircraftHud.style.color = "#FF4D4D";
-    aircraftHud.style.borderColor = "rgba(255, 77, 77, 0.3)";
+    aircraftHud.textContent = "Offline";
+    aircraftHud.classList.add("error");
   }
 
   function hideFeedOffline() {
-    aircraftHud.style.color = "";
-    aircraftHud.style.borderColor = "";
+    aircraftHud.classList.remove("error");
   }
 
   // ═══════════════════════════════════════════
@@ -643,12 +641,14 @@
       if (!f) return;
 
       // Reset panel to aircraft mode
-      panel.classList.remove("sat-mode");
-      document.getElementById("panel-title").textContent = "AIRCRAFT INTEL";
+      panel.classList.remove("sat-mode", "sea-mode", "haz-mode", "cctv-mode");
+      document.getElementById("panel-title").textContent = "Aircraft";
       document.getElementById("panel-route").style.display = "";
       document.getElementById("panel-body").style.display = "";
-      const satBody = document.getElementById("panel-body-sat");
-      if (satBody) satBody.style.display = "none";
+      ["panel-body-sat", "panel-body-sea", "panel-body-haz", "panel-body-cctv"].forEach((bid) => {
+        const el = document.getElementById(bid);
+        if (el) el.style.display = "none";
+      });
 
       const callsign = (f.callsign || f.flight || "").trim() || "---";
       const country  = f.orig_country || f.origin_country || f.country || "---";
@@ -672,7 +672,7 @@
       const namesLine = `${origName ? origName.name : (origIata || "N/A")} &rarr; ${destName ? destName.name : (destIata || "N/A")}`;
 
       document.getElementById("panel-route-text").innerHTML =
-        `${codesLine} | ${namesLine}`;
+        `${codesLine}<br><span style="color:var(--text-2);font-family:var(--font-ui);font-weight:400">${namesLine}</span>`;
       document.getElementById("panel-callsign").textContent = callsign;
       document.getElementById("panel-operator").textContent = operator;
       document.getElementById("panel-reg").textContent      = reg;

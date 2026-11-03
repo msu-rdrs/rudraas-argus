@@ -2,35 +2,55 @@
 
 // ── Boot Sequence ──
 (function runBootSequence() {
-  const lines = [
-    "> INITIALIZING GEOSPATIAL CORE.............. OK",
-    "> CONNECTING SATELLITE FEEDS................ OK",
-    "> LOADING TERRAIN ENGINE.................... OK",
-    "> ESTABLISHING OSINT PIPELINE............... OK",
-    "> ACTIVATING SENSOR ARRAY................... OK",
-    "> ALL SYSTEMS NOMINAL",
-    "> WELCOME, COMMANDER.",
+  const steps = [
+    "Geospatial core",
+    "Terrain & imagery",
+    "OSINT pipeline",
+    "Sensor layers",
   ];
 
-  const terminal = document.getElementById("boot-terminal");
+  const bootScreen = document.getElementById("boot-screen");
+  const list = document.getElementById("boot-terminal");
+  const bar = document.getElementById("boot-progress-bar");
   let i = 0;
+  let finished = false;
 
-  function printLine() {
-    if (i < lines.length) {
-      terminal.textContent += (i > 0 ? "\n" : "") + lines[i];
+  function finish() {
+    if (finished) return;
+    finished = true;
+    bar.style.width = "100%";
+    bootScreen.classList.add("fade-out");
+    setTimeout(() => bootScreen.remove(), 500);
+  }
+
+  function nextStep() {
+    if (finished) return;
+    if (i > 0) {
+      const prev = list.lastElementChild;
+      prev.classList.add("done");
+      prev.querySelector(".state").textContent = "OK";
+      prev.querySelector(".state").className = "state ok";
+    }
+    if (i < steps.length) {
+      const li = document.createElement("li");
+      li.innerHTML = '<span></span><span class="state">…</span>';
+      li.firstChild.textContent = steps[i];
+      list.appendChild(li);
       i++;
-      setTimeout(printLine, 300);
+      bar.style.width = Math.round((i / (steps.length + 1)) * 100) + "%";
+      setTimeout(nextStep, 260);
     } else {
-      setTimeout(() => {
-        const bootScreen = document.getElementById("boot-screen");
-        bootScreen.classList.add("fade-out");
-        setTimeout(() => bootScreen.remove(), 600);
-      }, 1000);
+      const li = document.createElement("li");
+      li.className = "done";
+      li.innerHTML = '<span>All systems nominal</span><span class="state ok">READY</span>';
+      list.appendChild(li);
+      bar.style.width = "100%";
+      setTimeout(finish, 450);
     }
   }
 
-  // Let the emblem pulse for 1.5s before terminal text starts
-  setTimeout(printLine, 1500);
+  bootScreen.addEventListener("click", finish);
+  setTimeout(nextStep, 500);
 })();
 
 // Disable the default Cesium Ion token warning
@@ -149,15 +169,20 @@ function updateClock() {
 setInterval(updateClock, 1000);
 updateClock();
 
-// ── Camera Coordinates Display ──
+// ── Camera Coordinates Display (status bar) ──
+const coordValues = document.querySelectorAll("#camera-coords .v");
+let lastCoords = {};
 function updateCameraCoords() {
   const carto = Cesium.Cartographic.fromCartesian(viewer.camera.positionWC);
   if (carto) {
     const lat = Cesium.Math.toDegrees(carto.latitude).toFixed(4);
     const lng = Cesium.Math.toDegrees(carto.longitude).toFixed(4);
     const alt = (carto.height / 1000).toFixed(1);
-    document.getElementById("camera-coords").innerHTML =
-      `LAT: ${lat}&deg; &nbsp; LNG: ${lng}&deg; &nbsp; ALT: ${alt} km`;
+    if (lat === lastCoords.lat && lng === lastCoords.lng && alt === lastCoords.alt) return;
+    lastCoords = { lat, lng, alt };
+    coordValues[0].textContent = lat + "\u00B0";
+    coordValues[1].textContent = lng + "\u00B0";
+    coordValues[2].textContent = Number(alt).toLocaleString("en-US", { minimumFractionDigits: 1, maximumFractionDigits: 1 }) + " km";
   }
 }
 viewer.scene.postRender.addEventListener(updateCameraCoords);
@@ -226,7 +251,7 @@ searchBar.addEventListener("input", function (e) {
     searchDropdown.classList.remove("hidden");
     matches.forEach(function (match) {
       var div = document.createElement("div");
-      div.textContent = "\u2316 " + match.name;
+      div.textContent = match.name;
       div.className = "autocomplete-item";
       div.addEventListener("click", function () {
         flyToTarget(match.lat, match.lng, match.name);
@@ -240,7 +265,7 @@ searchBar.addEventListener("input", function (e) {
   } else {
     // No local matches — prompt for deep search
     var div = document.createElement("div");
-    div.textContent = "[ Press Enter to scan coordinates ]";
+    div.textContent = "Press Enter to search worldwide";
     div.className = "search-prompt";
     searchDropdown.appendChild(div);
     searchDropdown.classList.remove("hidden");
@@ -273,14 +298,14 @@ function flyToTarget(lat, lng, label) {
     position: Cesium.Cartesian3.fromDegrees(lng, lat, 0),
     point: {
       pixelSize: 14,
-      color: Cesium.Color.fromCssColorString("#00AAFF").withAlpha(0.9),
-      outlineColor: Cesium.Color.fromCssColorString("#00AAFF").withAlpha(0.3),
+      color: Cesium.Color.fromCssColorString("#D97757").withAlpha(0.9),
+      outlineColor: Cesium.Color.fromCssColorString("#D97757").withAlpha(0.3),
       outlineWidth: 6,
     },
     label: {
       text: label.toUpperCase(),
-      font: "12px 'Roboto Mono', monospace",
-      fillColor: Cesium.Color.fromCssColorString("#00AAFF"),
+      font: "12px 'JetBrains Mono', monospace",
+      fillColor: Cesium.Color.fromCssColorString("#D97757"),
       outlineColor: Cesium.Color.BLACK,
       outlineWidth: 3,
       style: Cesium.LabelStyle.FILL_AND_OUTLINE,
@@ -290,9 +315,9 @@ function flyToTarget(lat, lng, label) {
     ellipse: {
       semiMajorAxis: 2000,
       semiMinorAxis: 2000,
-      material: Cesium.Color.fromCssColorString("#00AAFF").withAlpha(0.08),
+      material: Cesium.Color.fromCssColorString("#D97757").withAlpha(0.08),
       outline: true,
-      outlineColor: Cesium.Color.fromCssColorString("#00AAFF").withAlpha(0.4),
+      outlineColor: Cesium.Color.fromCssColorString("#D97757").withAlpha(0.4),
       outlineWidth: 1,
       height: 0,
     },
@@ -371,7 +396,7 @@ searchBar.addEventListener("keydown", async (e) => {
 
       if (entity.polygon) {
         // Keep polygon for hover-tooltips — near-invisible but pickable
-        entity.polygon.material = Cesium.Color.fromCssColorString("#00AAFF").withAlpha(0.01);
+        entity.polygon.material = Cesium.Color.fromCssColorString("#D97757").withAlpha(0.01);
         entity.polygon.outline = false;
         entity.polygon.height = 100;
 
@@ -382,8 +407,8 @@ searchBar.addEventListener("keydown", async (e) => {
           dataSource.entities.add({
             polyline: {
               positions: positions,
-              width: 2.0,
-              material: Cesium.Color.fromCssColorString("#00AAFF").withAlpha(0.8),
+              width: 1.5,
+              material: Cesium.Color.fromCssColorString("#FAF9F5").withAlpha(0.45),
               clampToGround: true,
             },
           });
@@ -484,7 +509,7 @@ strategicCities.forEach(function (city) {
     },
     label: {
       text: city.name,
-      font: '11px "Roboto Mono", monospace',
+      font: '11px "JetBrains Mono", monospace',
       fillColor: Cesium.Color.WHITE,
       outlineColor: Cesium.Color.BLACK,
       outlineWidth: 3,
