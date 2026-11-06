@@ -913,3 +913,23 @@ html, body {
   display: none;
   white-space: nowrap;
 }
+
+/* ── Intel Feed link (top bar) ── */
+#feed-link {
+  display: flex; align-items: center; gap: 6px;
+  height: 34px; padding: 0 14px; margin-right: 10px;
+  border: 1px solid rgba(212, 168, 67, 0.45);
+  border-radius: var(--radius);
+  color: #D4A843;
+  font-family: var(--font-ui);
+  font-size: 13px; font-weight: 600;
+  letter-spacing: 2px;
+  text-decoration: none;
+  transition: all 0.25s;
+}
+#feed-link:hover,
+#feed-link:focus-visible {
+  border-color: #D4A843;
+  box-shadow: 0 0 16px rgba(212, 168, 67, 0.2);
+  outline: none;
+}

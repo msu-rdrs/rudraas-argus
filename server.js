@@ -438,6 +438,170 @@ app.get("/api/maritime", (req, res) => {
   res.json({ data: fleet });
 });
 
+// ── News aggregation: /api/news ──
+// Sources need no API key: GDELT DOC 2.0 (global news index) + public RSS feeds.
+const NEWS_CACHE_TTL = 5 * 60 * 1000; // 5 minutes
+const NEWS_LIMIT = 150;
+const GDELT_URL =
+  "https://api.gdeltproject.org/api/v2/doc/doc?query=" +
+  encodeURIComponent(
+    "(military OR missile OR navy OR airspace OR earthquake OR cyclone OR flood OR satellite OR cyberattack OR conflict) sourcelang:english"
+  ) +
+  "&mode=artlist&maxrecords=75&format=json&sort=datedesc&timespan=24h";
+const RSS_FEEDS = [
+  { name: "BBC World", url: "https://feeds.bbci.co.uk/news/world/rss.xml" },
+  { name: "Al Jazeera", url: "https://www.aljazeera.com/xml/rss/all.xml" },
+  { name: "The Guardian", url: "https://www.theguardian.com/world/rss" },
+];
+
+// First match wins, so the more specific topics come first.
+const NEWS_TOPICS = [
+  ["CYBER", /\b(cyber|hack(ed|ers?)?|ransomware|malware|data breach|ddos)\b/i],
+  ["SPACE", /\b(satellite|rocket|spacex|nasa|isro|esa|orbit(al)?|space station|astronaut)\b/i],
+  ["DISASTER", /\b(earthquake|quake|tsunami|flood(s|ing)?|cyclone|hurricane|typhoon|wildfire|volcan\w*|landslide|storm|heatwave|drought)\b/i],
+  ["MARITIME", /\b(navy|naval|warship|vessel|ship(s|ping)?|tanker|port|coast ?guard|strait|maritime|piracy)\b/i],
+  ["AVIATION", /\b(flight|airline|airport|aircraft|plane|jet|airspace|aviation|helicopter)\b/i],
+  ["CONFLICT", /\b(war|military|missile|troops|army|drone|airstrike|strike|ceasefire|attack|shelling|insurgen\w*|militant|defen[cs]e)\b/i],
+];
+
+function classifyNews(text) {
+  for (const [topic, re] of NEWS_TOPICS) if (re.test(text)) return topic;
+  return "GENERAL";
+}
+
+function decodeEntities(s) {
+  return String(s || "")
+    .replace(/<!\[CDATA\[([\s\S]*?)\]\]>/g, "$1")
+    .replace(/<[^>]*>/g, " ")
+    .replace(/&#(\d+);/g, (_, n) => String.fromCodePoint(Number(n)))
+    .replace(/&#x([0-9a-f]+);/gi, (_, n) => String.fromCodePoint(parseInt(n, 16)))
+    .replace(/&quot;/g, '"').replace(/&apos;|&#39;/g, "'")
+    .replace(/&lt;/g, "<").replace(/&gt;/g, ">").replace(/&nbsp;/g, " ")
+    .replace(/&amp;/g, "&")
+    .replace(/\s+/g, " ")
+    .trim();
+}
+
+function rssTag(item, tag) {
+  const m = item.match(new RegExp("<" + tag + "(?:\\s[^>]*)?>([\\s\\S]*?)</" + tag + ">", "i"));
+  return m ? m[1] : "";
+}
+
+function safeHttpUrl(u) {
+  try {
+    const url = new URL(String(u).trim());
+    return url.protocol === "http:" || url.protocol === "https:" ? url.href : null;
+  } catch (e) {
+    return null;
+  }
+}
+
+async function fetchWithTimeout(url, ms = 10000) {
+  const ctrl = new AbortController();
+  const t = setTimeout(() => ctrl.abort(), ms);
+  try {
+    const res = await fetch(url, {
+      signal: ctrl.signal,
+      headers: { "User-Agent": "ArgusIntelFeed/1.0", Accept: "*/*" },
+    });
+    if (!res.ok) throw new Error("HTTP " + res.status);
+    return res;
+  } finally {
+    clearTimeout(t);
+  }
+}
+
+async function fetchGdelt() {
+  const res = await fetchWithTimeout(GDELT_URL);
+  const text = await res.text();
+  let json;
+  try { json = JSON.parse(text); } catch (e) { throw new Error("GDELT returned non-JSON"); }
+  return (json.articles || []).map((a) => {
+    // seendate looks like 20261106T153000Z
+    const d = /^(\d{4})(\d{2})(\d{2})T(\d{2})(\d{2})(\d{2})Z$/.exec(a.seendate || "");
+    const published = d ? `${d[1]}-${d[2]}-${d[3]}T${d[4]}:${d[5]}:${d[6]}Z` : null;
+    return {
+      title: decodeEntities(a.title),
+      url: safeHttpUrl(a.url),
+      source: a.domain || "GDELT",
+      country: a.sourcecountry || "",
+      published,
+      summary: "",
+      via: "GDELT",
+    };
+  });
+}
+
+async function fetchRss(feed) {
+  const res = await fetchWithTimeout(feed.url);
+  const xml = await res.text();
+  const items = xml.match(/<item[\s>][\s\S]*?<\/item>/gi) || [];
+  return items.map((item) => {
+    const pub = decodeEntities(rssTag(item, "pubDate") || rssTag(item, "dc:date"));
+    const t = Date.parse(pub);
+    return {
+      title: decodeEntities(rssTag(item, "title")),
+      url: safeHttpUrl(decodeEntities(rssTag(item, "link"))),
+      source: feed.name,
+      country: "",
+      published: isNaN(t) ? null : new Date(t).toISOString(),
+      summary: decodeEntities(rssTag(item, "description")).slice(0, 280),
+      via: "RSS",
+    };
+  });
+}
+
+let newsCache = null;
+let newsCacheTime = 0;
+
+app.get("/api/news", async (req, res) => {
+  const now = Date.now();
+  if (newsCache && now - newsCacheTime < NEWS_CACHE_TTL) {
+    return res.json(newsCache);
+  }
+
+  const jobs = [
+    { name: "GDELT", run: fetchGdelt },
+    ...RSS_FEEDS.map((f) => ({ name: f.name, run: () => fetchRss(f) })),
+  ];
+  const results = await Promise.allSettled(jobs.map((j) => j.run()));
+
+  const sources = [];
+  const seen = new Set();
+  const articles = [];
+  results.forEach((r, i) => {
+    const name = jobs[i].name;
+    if (r.status !== "fulfilled") {
+      console.error("ARGUS-SERVER: News source failed —", name, r.reason && r.reason.message);
+      sources.push({ name, ok: false, count: 0, error: (r.reason && r.reason.message) || "failed" });
+      return;
+    }
+    let count = 0;
+    for (const a of r.value) {
+      if (!a.title || !a.url) continue;
+      const key = a.title.toLowerCase().replace(/[^a-z0-9]+/g, " ").trim();
+      if (seen.has(key)) continue;
+      seen.add(key);
+      a.topic = classifyNews(a.title + " " + a.summary);
+      a.id = "news-" + Buffer.from(a.url).toString("base64url").slice(-24);
+      articles.push(a);
+      count++;
+    }
+    sources.push({ name, ok: true, count });
+  });
+
+  articles.sort((a, b) => (Date.parse(b.published) || 0) - (Date.parse(a.published) || 0));
+  const payload = { updated: new Date().toISOString(), sources, data: articles.slice(0, NEWS_LIMIT) };
+
+  // Only cache a result that actually has news, so a failed fetch retries next time
+  if (payload.data.length) {
+    newsCache = payload;
+    newsCacheTime = now;
+  }
+  console.log("ARGUS-SERVER: Serving", payload.data.length, "news items");
+  res.json(payload);
+});
+
 // ── Serve static files ──
 app.use(express.static(path.join(__dirname)));
 

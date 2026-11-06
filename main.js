@@ -666,3 +666,16 @@ console.log("ARGUS-GEO: Strategic hubs initialized.");
 })();
 
 console.log("ARGUS: System initialized.");
+
+// ── Deep link from the Intel Feed: index.html#fly=<lat>,<lng>,<label> ──
+(function handleFeedDeepLink() {
+  const m = /^#fly=(-?\d+(?:\.\d+)?),(-?\d+(?:\.\d+)?)(?:,(.*))?$/.exec(window.location.hash);
+  if (!m) return;
+  const lat = parseFloat(m[1]);
+  const lng = parseFloat(m[2]);
+  if (!isFinite(lat) || !isFinite(lng) || Math.abs(lat) > 90 || Math.abs(lng) > 180) return;
+  let label = "TARGET";
+  try { if (m[3]) label = decodeURIComponent(m[3]).slice(0, 80); } catch (e) { /* keep default */ }
+  // Wait for the boot screen to finish before flying
+  setTimeout(() => flyToTarget(lat, lng, label), 5400);
+})();
